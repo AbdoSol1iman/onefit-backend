@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OneFit.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+415a9ae554c58e75452fb38d0e37b566b78f3731")]
 [assembly: System.Reflection.AssemblyProductAttribute("OneFit.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OneFit.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

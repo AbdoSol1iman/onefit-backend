@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="OneFit.Application/OneFit.Application.csproj" Id="2e55f41f-56bd-453f-975e-02fdd23f907b" />
+    <Project Path="OneFit.Domain/OneFit.Domain.csproj" Id="28b32d95-a9ca-430d-b2c4-20860ae196ba" />
+    <Project Path="OneFit.Infrastructure/OneFit.Infrastructure.csproj" Id="49093360-fcf6-481a-93fd-71fa96ade1c5" />
+    <Project Path="src/OneFit.Api/OneFit.Api.csproj" />
+  </Folder>
+</Solution>

@@ -9,10 +9,12 @@ public class UnitOfWork : IUnitOfWork
 {
     private readonly OneFitDbContext _db; 
     private IProductRepository? _products;
+    private IWishlistRepository? _wishlist;
 
     public UnitOfWork(OneFitDbContext db) => _db = db;
 
     public IProductRepository Products => _products ??= new ProductRepository(_db);
+    public IWishlistRepository Wishlist => _wishlist ??= new WishlistRepository(_db);
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
 

@@ -7,6 +7,7 @@ namespace OneFit.Application.Common.Interfaces.IRepositories
     public interface IUnitOfWork : IDisposable
     {
         IProductRepository Products { get; }
+        IWishlistRepository Wishlist { get; }
         Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
 }

@@ -1,4 +1,5 @@
 using OneFit.Api.Endpoints;
+using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Seeding;
@@ -11,6 +12,10 @@ Console.WriteLine("==================================");
  builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
+});
 
 var app = builder.Build();
 
@@ -72,6 +77,8 @@ if (args.Contains("--seed"))
 
 //catalog endpoints
 app.MapCatalogEndpoints();
+//wishlist endpoints
+app.MapWishlistEndpoints();
 
 app.Run();
 

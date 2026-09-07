@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\OneFit.Application\OneFit.Application.csproj" />
     <ProjectReference Include="..\OneFit.Domain\OneFit.Domain.csproj" />
   </ItemGroup>
 

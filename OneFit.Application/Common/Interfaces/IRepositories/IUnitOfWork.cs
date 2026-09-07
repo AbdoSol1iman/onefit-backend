@@ -8,6 +8,7 @@ namespace OneFit.Application.Common.Interfaces.IRepositories
     {
         IProductRepository Products { get; }
         IWishlistRepository Wishlist { get; }
+        ICartRepository Cart { get; }
         Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
 }

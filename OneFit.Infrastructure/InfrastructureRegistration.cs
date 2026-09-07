@@ -22,6 +22,8 @@ namespace OneFit.Infrastructure
             
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped<IWishlistRepository, WishlistRepository>();
+            services.AddScoped<ICartRepository, CartRepository>();
 
             services.AddMediatR(cfg =>
              cfg.RegisterServicesFromAssembly(typeof(QueryCatalogQuery).Assembly));

@@ -1,3 +1,4 @@
+using OneFit.Api.Endpoints;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Seeding;
@@ -7,23 +8,18 @@ var cs = builder.Configuration.GetConnectionString("DefaultConnection");
 Console.WriteLine("========== DB CONNECTION ==========");
 Console.WriteLine(cs);
 Console.WriteLine("==================================");
-
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+ builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
-Console.WriteLine("ARGS:");
-foreach (var arg in args)
-{
-    Console.WriteLine($"ARG = [{arg}]");
-}
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
@@ -73,6 +69,9 @@ if (args.Contains("--seed"))
 
     return;
 }
+
+//catalog endpoints
+app.MapCatalogEndpoints();
 
 app.Run();
 

@@ -9,10 +9,11 @@ public sealed class CatalogQueryService(OneFitDbContext db) : ICatalogQueryServi
     public async Task<QueryCatalogResponse> QueryAsync(QueryCatalogRequest request, CancellationToken ct = default)
     {
         var limit = Math.Clamp(request.Limit <= 0 ? 3 : request.Limit, 1, 20);
-        var tags = request.StyleTags?
+        var tagSet = request.StyleTags?
             .Where(t => !string.IsNullOrWhiteSpace(t))
-            .Select(t => t.Trim().ToLower())
-            .ToList() ?? [];
+            .Select(t => t.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase)
+            ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         var query = db.Products
             .AsNoTracking()

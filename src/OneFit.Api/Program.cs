@@ -1,33 +1,33 @@
+using System.Text.Json;
 using OneFit.Api.Endpoints;
 using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Seeding;
-var builder = WebApplication.CreateBuilder(args);
-var cs = builder.Configuration.GetConnectionString("DefaultConnection");
 
-Console.WriteLine("========== DB CONNECTION ==========");
-Console.WriteLine(cs);
-Console.WriteLine("==================================");
- builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddOpenApi();
 builder.Services.AddInfrastructureServices(builder.Configuration);
-builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+builder.Services.ConfigureHttpJsonOptions(o =>
 {
-    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
+    o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+    o.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
 });
 
 var app = builder.Build();
 
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
+
+app.MapCatalog();
 
 var summaries = new[]
 {
@@ -36,7 +36,7 @@ var summaries = new[]
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
@@ -47,7 +47,6 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
-
 
 if (args.Contains("--seed"))
 {
@@ -75,8 +74,6 @@ if (args.Contains("--seed"))
     return;
 }
 
-//catalog endpoints
-app.MapCatalogEndpoints();
 //wishlist endpoints
 app.MapWishlistEndpoints();
 

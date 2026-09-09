@@ -17,15 +17,40 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
 });
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()?
+    .Where(o => !string.IsNullOrWhiteSpace(o))
+    .ToArray() ?? [];
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        if (allowedOrigins.Length > 0)
+            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+        else if (builder.Environment.IsDevelopment())
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        else
+            policy.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => false);
+    });
+});
+
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("ApiDocs:Enabled"))
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
 
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
+    .WithName("Health")
+    .WithSummary("Liveness probe for Azure health checks and frontend ping.");
+
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 if (args.Contains("--seed"))
 {

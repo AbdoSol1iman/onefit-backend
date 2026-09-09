@@ -1,6 +1,10 @@
 using System.Text.Json;
 using OneFit.Api.Endpoints;
+using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
+using OneFit.Infrastructure.Persistence.Data;
+using OneFit.Infrastructure.Seeding;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -32,7 +36,7 @@ var summaries = new[]
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
@@ -43,6 +47,35 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+if (args.Contains("--seed"))
+{
+    Console.WriteLine("SEED MODE STARTED!");
+
+    using var scope = app.Services.CreateScope();
+
+    var db = scope.ServiceProvider
+        .GetRequiredService<OneFitDbContext>();
+
+    var jsonPath = Path.Combine(
+        AppContext.BaseDirectory,
+        "Seeding",
+        "Data",
+        "products.json"
+    );
+
+    Console.WriteLine($"JSON PATH: {jsonPath}");
+    Console.WriteLine($"FILE EXISTS: {File.Exists(jsonPath)}");
+
+    await ProductDataSeeder.SeedAsync(db, jsonPath);
+
+    Console.WriteLine("SEED DONE!");
+
+    return;
+}
+
+//wishlist endpoints
+app.MapWishlistEndpoints();
 
 app.Run();
 

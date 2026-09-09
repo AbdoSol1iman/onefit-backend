@@ -20,12 +20,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\OneFit.Application\OneFit.Application.csproj" />
     <ProjectReference Include="..\OneFit.Domain\OneFit.Domain.csproj" />
     <ProjectReference Include="..\OneFit.Application\OneFit.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Persistence\Data\" />
+    <None Update="Seeding\Data\products.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -2,6 +2,8 @@
 
 > Source of truth for what the frontend can call. Updated as endpoints go live.
 > Day-4 contract freeze: no shape changes after Day-4 EOD.
+>
+> Interactive API reference (dev only): `http://localhost:5066/scalar/` (raw spec: `/openapi/v1.json`).
 
 ## How to connect (local)
 The API reads `ConnectionStrings:DefaultConnection`. The real Neon password is

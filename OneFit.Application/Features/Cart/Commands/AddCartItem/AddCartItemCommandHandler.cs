@@ -3,25 +3,37 @@ using OneFit.Application.Common.Exceptions;
 using OneFit.Application.Common.Interfaces.IRepositories;
 using OneFit.Application.Features.Cart.Models;
 using OneFit.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace OneFit.Application.Features.Cart.Commands.AddCartItem
 {
+    /// <summary>
+    /// Handler for adding an item to the shopping cart
+    /// </summary>
     public class AddCartItemCommandHandler : IRequestHandler<AddCartItemCommand, CartResponse>
     {
         private readonly IUnitOfWork _unitOfWork;
 
         public AddCartItemCommandHandler(IUnitOfWork unitOfWork) => _unitOfWork = unitOfWork;
 
+        /// <summary>
+        /// Handles the AddCartItemCommand by adding or updating a cart item
+        /// </summary>
         public async Task<CartResponse> Handle(AddCartItemCommand request, CancellationToken ct)
         {
-           
-            
+            // Validate input
+            if (string.IsNullOrWhiteSpace(request.ShopperId))
+            {
+                throw new NotFoundException("INVALID_REQUEST", "ShopperId is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ProductId))
+            {
+                throw new NotFoundException("INVALID_REQUEST", "ProductId is required.");
+            }
+
             if (string.IsNullOrWhiteSpace(request.Size) || request.Qty <= 0)
             {
-                throw new NotFoundException("INVALID_REQUEST", "size and a positive qty are required.");
+                throw new NotFoundException("INVALID_REQUEST", "Size and a positive Qty are required.");
             }
 
             var productSize = await _unitOfWork.Cart.FindProductSizeAsync(request.ProductId, request.Size, ct)
@@ -50,7 +62,7 @@ namespace OneFit.Application.Features.Cart.Commands.AddCartItem
             {
                 var newItem = new CartItem
                 {
-                    CartItemId = $"CI-{Guid.NewGuid():N}"[..10].ToUpperInvariant(),
+                    CartItemId = Guid.NewGuid().ToString(), // Use full GUID for uniqueness
                     CartId = cart.CartId,
                     ProductId = request.ProductId,
                     BrandId = productSize.Product.BrandId,

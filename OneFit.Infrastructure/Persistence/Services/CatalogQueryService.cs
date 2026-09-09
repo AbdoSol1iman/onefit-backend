@@ -15,11 +15,7 @@ public sealed class CatalogQueryService(OneFitDbContext db) : ICatalogQueryServi
             .ToHashSet(StringComparer.OrdinalIgnoreCase)
             ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        var query = db.Products
-            .AsNoTracking()
-            .Include(p => p.Brand)
-            .Include(p => p.ProductSizes)
-            .AsQueryable();
+        var query = db.Products.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(request.Category))
             query = query.Where(p => p.Category == request.Category!.Trim().ToLower());

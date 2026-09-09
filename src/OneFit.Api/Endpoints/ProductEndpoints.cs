@@ -4,8 +4,6 @@ namespace OneFit.Api.Endpoints;
 
 public static class ProductEndpoints
 {
-    private static readonly HashSet<string> Sorts = ["price_asc", "price_desc", "newest"];
-
     public static void MapProducts(this WebApplication app)
     {
         var group = app.MapGroup("/products").WithTags("Products");
@@ -21,21 +19,12 @@ public static class ProductEndpoints
             IProductQueryService service,
             CancellationToken ct) =>
         {
-            sort = string.IsNullOrWhiteSpace(sort) ? "price_asc" : sort.Trim().ToLower();
-            var inStock = in_stock_only ?? true;
-            var pageValue = page ?? 1;
-            var pageSizeValue = page_size ?? 20;
-            if (!Sorts.Contains(sort))
-                return Results.BadRequest(new { error = "sort must be price_asc, price_desc or newest" });
-            if (pageValue is < 1)
-                return Results.BadRequest(new { error = "page must be >= 1" });
-            if (pageSizeValue is < 1 or > 50)
-                return Results.BadRequest(new { error = "page_size must be 1..50" });
-            if (max_price_egp is < 0)
-                return Results.BadRequest(new { error = "max_price_egp must be >= 0" });
+            var parsed = ProductListParser.TryParse(
+                category, max_price_egp, q, in_stock_only, sort, page, page_size);
+            if (parsed.Error is not null)
+                return Results.BadRequest(new { error = parsed.Error });
 
-            var res = await service.ListAsync(new ProductListQuery(
-                category, max_price_egp, q, inStock, sort, pageValue, pageSizeValue), ct);
+            var res = await service.ListAsync(parsed.Query!, ct);
             return Results.Ok(res);
         })
         .WithName("ListProducts")

@@ -9,16 +9,13 @@ public sealed class CatalogQueryService(OneFitDbContext db) : ICatalogQueryServi
     public async Task<QueryCatalogResponse> QueryAsync(QueryCatalogRequest request, CancellationToken ct = default)
     {
         var limit = Math.Clamp(request.Limit <= 0 ? 3 : request.Limit, 1, 20);
-        var tags = request.StyleTags?
+        var tagSet = request.StyleTags?
             .Where(t => !string.IsNullOrWhiteSpace(t))
-            .Select(t => t.Trim().ToLower())
-            .ToList() ?? [];
+            .Select(t => t.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase)
+            ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        var query = db.Products
-            .AsNoTracking()
-            .Include(p => p.Brand)
-            .Include(p => p.ProductSizes)
-            .AsQueryable();
+        var query = db.Products.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(request.Category))
             query = query.Where(p => p.Category == request.Category!.Trim().ToLower());
@@ -44,9 +41,9 @@ public sealed class CatalogQueryService(OneFitDbContext db) : ICatalogQueryServi
             })
             .ToListAsync(ct);
 
-        if (tags.Count > 0)
+        if (tagSet.Count > 0)
             rows = rows
-                .OrderByDescending(r => r.StyleTags == null ? 0 : r.StyleTags.Count(t => tags.Contains(t.ToLower())))
+                .OrderByDescending(r => r.StyleTags == null ? 0 : r.StyleTags.Count(t => tagSet.Contains(t.ToLower())))
                 .ToList();
 
         var results = rows.Take(limit).Select(r => new CatalogItemDto(

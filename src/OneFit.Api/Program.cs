@@ -1,14 +1,14 @@
 using System.Text.Json;
 using OneFit.Api.Endpoints;
+using OneFit.Api.EndPoints.Cart;
 using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Seeding;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -17,45 +17,47 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
 });
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()?
+    .Where(o => !string.IsNullOrWhiteSpace(o))
+    .ToArray() ?? [];
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        if (allowedOrigins.Length > 0)
+            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+        else if (builder.Environment.IsDevelopment())
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        else
+            policy.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => false);
+    });
+});
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("ApiDocs:Enabled"))
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
+
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
+    .WithName("Health")
+    .WithSummary("Liveness probe for Azure health checks and frontend ping.");
 
 app.UseHttpsRedirection();
 
-app.MapCatalog();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.UseCors();
 
 if (args.Contains("--seed"))
 {
     Console.WriteLine("SEED MODE STARTED!");
 
     using var scope = app.Services.CreateScope();
-
-    var db = scope.ServiceProvider
-        .GetRequiredService<OneFitDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<OneFitDbContext>();
 
     var jsonPath = Path.Combine(
         AppContext.BaseDirectory,
@@ -70,16 +72,12 @@ if (args.Contains("--seed"))
     await ProductDataSeeder.SeedAsync(db, jsonPath);
 
     Console.WriteLine("SEED DONE!");
-
     return;
 }
 
-//wishlist endpoints
+app.MapCatalog();
+app.MapProducts();
 app.MapWishlistEndpoints();
+app.MapCartEndpoints();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

@@ -66,13 +66,15 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
         return query;
     }
 
+    private static readonly Dictionary<string, Func<IQueryable<Product>, IOrderedQueryable<Product>>> Sorts = new()
+    {
+        ["price_desc"] = q => q.OrderByDescending(p => p.PriceEgp).ThenBy(p => p.ProductId),
+        ["newest"] = q => q.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.ProductId),
+        ["price_asc"] = q => q.OrderBy(p => p.PriceEgp).ThenBy(p => p.ProductId),
+    };
+
     private static IQueryable<Product> ApplySort(IQueryable<Product> query, string sort) =>
-        sort switch
-        {
-            "price_desc" => query.OrderByDescending(p => p.PriceEgp).ThenBy(p => p.ProductId),
-            "newest" => query.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.ProductId),
-            _ => query.OrderBy(p => p.PriceEgp).ThenBy(p => p.ProductId),
-        };
+        Sorts.TryGetValue(sort, out var apply) ? apply(query) : Sorts["price_asc"](query);
 
     private static string EscapeLike(string value) =>
         value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");

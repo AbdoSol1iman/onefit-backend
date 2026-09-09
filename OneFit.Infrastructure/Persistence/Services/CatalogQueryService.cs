@@ -41,9 +41,9 @@ public sealed class CatalogQueryService(OneFitDbContext db) : ICatalogQueryServi
             })
             .ToListAsync(ct);
 
-        if (tags.Count > 0)
+        if (tagSet.Count > 0)
             rows = rows
-                .OrderByDescending(r => r.StyleTags == null ? 0 : r.StyleTags.Count(t => tags.Contains(t.ToLower())))
+                .OrderByDescending(r => r.StyleTags == null ? 0 : r.StyleTags.Count(t => tagSet.Contains(t.ToLower())))
                 .ToList();
 
         var results = rows.Take(limit).Select(r => new CatalogItemDto(

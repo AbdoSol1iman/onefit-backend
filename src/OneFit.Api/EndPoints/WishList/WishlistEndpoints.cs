@@ -167,12 +167,9 @@ namespace OneFit.Api.EndPoints.WishList
                     items = items
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INTERNAL_ERROR", message = ex.Message }
-                });
+                return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error");
             }
         }
     }

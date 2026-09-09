@@ -1,10 +1,13 @@
 ﻿using MediatR;
 using OneFit.Application.Features.Cart.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace OneFit.Application.Features.Cart.Commands.RemoveCartItem
 {
-    public record RemoveCartItemCommand(string ShopperId, string ProductId) : IRequest<CartResponse>;
+    /// <summary>
+    /// Command to remove a specific cart item by product ID and size
+    /// </summary>
+    public record RemoveCartItemCommand(
+        string ShopperId,
+        string ProductId,
+        string Size) : IRequest<CartResponse>;
 }

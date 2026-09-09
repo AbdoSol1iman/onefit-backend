@@ -1,3 +1,5 @@
+using System.Text.Json;
+using OneFit.Api.Endpoints;
 using OneFit.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -5,6 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+    o.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
+});
 
 var app = builder.Build();
 
@@ -15,6 +22,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.MapCatalog();
 
 var summaries = new[]
 {

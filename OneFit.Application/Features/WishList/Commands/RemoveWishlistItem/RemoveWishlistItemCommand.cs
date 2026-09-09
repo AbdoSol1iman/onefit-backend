@@ -1,9 +1,11 @@
 ﻿using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace OneFit.Application.Features.WishList.Commands.RemoveWishlistItem
 {
-    public record RemoveWishlistItemCommand(string WishlistItemId) : IRequest<bool>;
+    /// <summary>
+    /// Command to remove a wishlist item - requires ShopperId for authorization
+    /// </summary>
+    public record RemoveWishlistItemCommand(
+        string ShopperId,
+        string WishlistItemId) : IRequest<bool>;
 }

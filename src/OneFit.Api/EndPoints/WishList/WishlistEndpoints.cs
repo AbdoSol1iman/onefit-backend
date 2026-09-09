@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
 using OneFit.Application.Common.Exceptions;
 using OneFit.Application.Features.WishList.Commands.AddWishlistItem;
 using OneFit.Application.Features.WishList.Commands.RemoveWishlistItem;
@@ -6,68 +7,173 @@ using OneFit.Application.Features.WishList.Queries.GetWishlist;
 
 namespace OneFit.Api.EndPoints.WishList
 {
+    /// <summary>
+    /// Wishlist endpoints for managing wishlist operations
+    /// </summary>
     public static class WishlistEndpoints
     {
+        /// <summary>
+        /// Maps all wishlist-related API endpoints
+        /// </summary>
+        /// <remarks>
+        /// Includes:
+        /// - POST /api/v1/wishlist/items - Add item to wishlist
+        /// - DELETE /api/v1/wishlist/items/{wishlist_item_id} - Remove item from wishlist
+        /// - GET /api/v1/wishlist - Get wishlist items for a shopper
+        /// </remarks>
         public static void MapWishlistEndpoints(this IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/v1/wishlist");
+            var group = app.MapGroup("/api/v1/wishlist")
+                .WithTags("Wishlist")
+                .WithOpenApi();
 
-            group.MapPost("/items", async (AddWishlistItemRequest request, ISender sender, CancellationToken ct) =>
+            // Add item to wishlist
+            group.MapPost("/items", AddWishlistItemHandler)
+                .WithName("AddWishlistItem")
+                .WithSummary("Add item to wishlist")
+                .WithDescription("Adds a new item to the wishlist")
+                .Produces(200)
+                .Produces(400)
+                .Produces(404);
+
+            // Remove item from wishlist
+            group.MapDelete("/items/{wishlist_item_id}", RemoveWishlistItemHandler)
+                .WithName("RemoveWishlistItem")
+                .WithSummary("Remove item from wishlist")
+                .WithDescription("Removes an item from the wishlist")
+                .Produces(200)
+                .Produces(400)
+                .Produces(404);
+
+            // Get wishlist items
+            group.MapGet("", GetWishlistHandler)
+                .WithName("GetWishlist")
+                .WithSummary("Get wishlist items")
+                .WithDescription("Retrieves all wishlist items for a specific shopper")
+                .Produces(200)
+                .Produces(400);
+        }
+
+        /// <summary>
+        /// Handles adding an item to the wishlist
+        /// </summary>
+        private static async Task<IResult> AddWishlistItemHandler(
+            AddWishlistItemRequest request,
+            ISender sender,
+            CancellationToken ct)
+        {
+            try
             {
-                if (string.IsNullOrWhiteSpace(request.ShopperId) ||
-                    string.IsNullOrWhiteSpace(request.ProductId) ||
-                    string.IsNullOrWhiteSpace(request.Size))
-                {
-                    return Results.BadRequest(new
-                    {
-                        error = new { code = "INVALID_REQUEST", message = "shopperId, productId and size are all required." }
-                    });
-                }
+                var command = new AddWishlistItemCommand(
+                    request.ShopperId,
+                    request.ProductId,
+                    request.Size);
 
-                try
+                var result = await sender.Send(command, ct);
+                return Results.Ok(new
                 {
-                    var command = new AddWishlistItemCommand(request.ShopperId, request.ProductId, request.Size);
-                    var result = await sender.Send(command, ct);
-                    return Results.Ok(result);
-                }
-                catch (NotFoundException ex)
-                {
-                    return Results.BadRequest(new { error = new { code = ex.ErrorCode, message = ex.Message } });
-                }
-            })
-            .WithName("AddWishlistItem");
-
-
-            group.MapDelete("/items/{wishlist_item_id}", async (string wishlist_item_id, ISender sender, CancellationToken ct) =>
+                    item = result
+                });
+            }
+            catch (NotFoundException ex)
             {
-                try
+                return Results.NotFound(new
                 {
-                    await sender.Send(new RemoveWishlistItemCommand(wishlist_item_id), ct);
-                    return Results.Ok(new { deleted = true });
-                }
-                catch (NotFoundException ex)
-                {
-                    return Results.BadRequest(new { error = new { code = ex.ErrorCode, message = ex.Message } });
-                }
-            })
-            .WithName("RemoveWishlistItem");
-
-
-            group.MapGet("", async ([Microsoft.AspNetCore.Mvc.FromQuery(Name = "shopper_id")] string shopperId,
-                ISender sender, CancellationToken ct) =>
+                    error = new { code = ex.ErrorCode, message = ex.Message }
+                });
+            }
+            catch (Exception ex)
             {
-                if (string.IsNullOrWhiteSpace(shopperId))
+                return Results.BadRequest(new
                 {
-                    return Results.BadRequest(new
-                    {
-                        error = new { code = "INVALID_REQUEST", message = "shopperId query parameter is required." }
-                    });
-                }
+                    error = new { code = "INTERNAL_ERROR", message = ex.Message }
+                });
+            }
+        }
 
+        /// <summary>
+        /// Handles removing an item from the wishlist
+        /// </summary>
+        private static async Task<IResult> RemoveWishlistItemHandler(
+            string wishlist_item_id,
+            [FromHeader(Name = "X-Shopper-Id")] string shopperId,
+            ISender sender,
+            CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(shopperId))
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INVALID_REQUEST", message = "X-Shopper-Id header is required." }
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(wishlist_item_id))
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INVALID_REQUEST", message = "wishlist_item_id is required." }
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(
+                    new RemoveWishlistItemCommand(shopperId, wishlist_item_id),
+                    ct);
+
+                return Results.Ok(new
+                {
+                    deleted = result
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new
+                {
+                    error = new { code = ex.ErrorCode, message = ex.Message }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INTERNAL_ERROR", message = ex.Message }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Handles retrieving wishlist items for a shopper
+        /// </summary>
+        private static async Task<IResult> GetWishlistHandler(
+            [FromQuery(Name = "shopper_id")] string shopperId,
+            ISender sender,
+            CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(shopperId))
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INVALID_REQUEST", message = "shopper_id query parameter is required." }
+                });
+            }
+
+            try
+            {
                 var items = await sender.Send(new GetWishlistQuery(shopperId), ct);
-                return Results.Ok(new { items });
-            })
-            .WithName("GetWishlist");
+                return Results.Ok(new
+                {
+                    items = items
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INTERNAL_ERROR", message = ex.Message }
+                });
+            }
         }
     }
 }

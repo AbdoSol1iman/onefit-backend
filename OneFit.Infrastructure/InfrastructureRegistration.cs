@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OneFit.Application.Features.Catalog;
+using OneFit.Application.Features.Products;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Persistence.Services;
 using System;
@@ -18,6 +19,7 @@ namespace OneFit.Infrastructure
             services.AddDbContext<OneFitDbContext>(options =>
                 options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
             services.AddScoped<ICatalogQueryService, CatalogQueryService>();
+            services.AddScoped<IProductQueryService, ProductQueryService>();
             return services;
         }
     }

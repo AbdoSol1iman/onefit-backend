@@ -24,6 +24,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapCatalog();
+app.MapProducts();
 
 var summaries = new[]
 {

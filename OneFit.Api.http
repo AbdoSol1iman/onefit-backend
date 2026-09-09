@@ -16,3 +16,11 @@ Content-Type: application/json
 }
 
 ###
+GET {{OneFit.Api_HostAddress}}/products?category=shirt&max_price_egp=700&q=shirt&page=1&page_size=20
+Accept: application/json
+
+###
+GET {{OneFit.Api_HostAddress}}/products/00c306f0-714e-4f84-9e5b-6c29029ce677
+Accept: application/json
+
+###

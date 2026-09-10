@@ -5,8 +5,6 @@ using OneFit.Application.Common.Interfaces;
 using OneFit.Domain.Entities;
 using OneFit.Domain.Entities.Brands;
 using OneFit.Infrastructure.Identity;
-using System;
-using System.Collections.Generic;
 
 namespace OneFit.Infrastructure.Persistence.Data;
 

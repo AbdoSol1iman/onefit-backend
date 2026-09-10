@@ -1,4 +1,5 @@
-﻿using OneFit.Application.Common.Interfaces.Authentication;
+﻿using Microsoft.AspNetCore.Mvc;
+using OneFit.Application.Common.Interfaces.Authentication;
 using OneFit.Application.Features.Authentication.DTOs;
 
 namespace OneFit.Api.EndPoints.AuthEndPoints
@@ -20,7 +21,7 @@ namespace OneFit.Api.EndPoints.AuthEndPoints
 
         private static async Task<IResult> LoginHandler(
             LoginRequestDTO request,
-            IAuthService authService)
+            [FromServices] IAuthService authService)
         {
             try
             {

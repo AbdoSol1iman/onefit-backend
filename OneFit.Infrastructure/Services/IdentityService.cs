@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿
+using Microsoft.AspNetCore.Identity;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Infrastructure.Constants;
 using OneFit.Infrastructure.Identity;

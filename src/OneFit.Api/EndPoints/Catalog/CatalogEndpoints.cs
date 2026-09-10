@@ -33,7 +33,7 @@ public static class CatalogEndpoints
             .WithName("QueryCatalog")
             .WithSummary("Query catalog products")
             .WithDescription("Retrieves products from catalog with optional filtering by price, category, and availability")
-            .WithOpenApi()
+            
             .Produces<CatalogQueryResponseDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest);
     }

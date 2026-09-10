@@ -9,46 +9,81 @@ using OneFit.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+var cs = builder.Configuration.GetConnectionString("DefaultConnection");
+
+Console.WriteLine("========== DB CONNECTION ==========");
+Console.WriteLine(cs);
+Console.WriteLine("==================================");
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 builder.Services.AddInfrastructureServices(builder.Configuration);
-builder.Services.ConfigureHttpJsonOptions(o =>
+
+builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
-    o.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+    options.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
 });
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
 await app.Services.SeedIdentityAsync();
 
+// Authentication & Authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
-app.MapCatalog();
+// Catalog endpoints
+app.MapCatalogEndpoints();
+
+// Wishlist endpoints
+app.MapWishlistEndpoints();
+
+// Cart endpoints
+app.MapCartEndpoints();
+
+// Auth endpoints
+app.MapLoginEndPoint();
+app.MapRegisterBrandEndPoint();
+app.MapRegisterUserEndPoint();
 
 var summaries = new[]
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+    "Freezing",
+    "Bracing",
+    "Chilly",
+    "Cool",
+    "Mild",
+    "Warm",
+    "Balmy",
+    "Hot",
+    "Sweltering",
+    "Scorching"
 };
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
+    var forecast = Enumerable.Range(1, 5)
+        .Select(index =>
+            new WeatherForecast
+            (
+                DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                Random.Shared.Next(-20, 55),
+                summaries[Random.Shared.Next(summaries.Length)]
+            ))
         .ToArray();
+
     return forecast;
 })
 .WithName("GetWeatherForecast");
@@ -79,19 +114,13 @@ if (args.Contains("--seed"))
     return;
 }
 
-//wishlist endpoints
-app.MapWishlistEndpoints();
-//cart endpoints
-app.MapCartEndpoints();
-
-//auth endpoints
-app.MapLoginEndPoint();
-app.MapRegisterBrandEndPoint();
-app.MapRegisterUserEndPoint();
-
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+record WeatherForecast(
+    DateOnly Date,
+    int TemperatureC,
+    string? Summary)
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    public int TemperatureF =>
+        32 + (int)(TemperatureC / 0.5556);
 }

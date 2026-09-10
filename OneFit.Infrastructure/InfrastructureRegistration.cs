@@ -15,6 +15,7 @@ using OneFit.Infrastructure.Identity;
 using OneFit.Infrastructure.Persistence;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Persistence.Repositories;
+using OneFit.Infrastructure.Services;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -29,16 +30,26 @@ namespace OneFit.Infrastructure
         {
             // Database & DbContext
             services.AddDbContext<OneFitDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
-            
+       options.UseNpgsql(
+           configuration.GetConnectionString("DefaultConnection")));
+            services.AddAuthentication();
+            services.AddDataProtection();
+
+            services.AddIdentityCore<ApplicationUser>()
+                .AddRoles<IdentityRole>()
+                .AddSignInManager()
+                .AddEntityFrameworkStores<OneFitDbContext>()
+                .AddDefaultTokenProviders();
+
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<IWishlistRepository, WishlistRepository>();
             services.AddScoped<ICartRepository, CartRepository>();
             services.AddScoped<IIdentityService, IdentityService>();
             services.AddScoped<IApplicationDbContext, OneFitDbContext>();
-
-
+            services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+            services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IFileStorageService, CloudinaryFileStorageService>();
 
             services.Configure<CloudinarySettings>(

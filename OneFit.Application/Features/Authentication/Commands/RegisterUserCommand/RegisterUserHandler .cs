@@ -1,18 +1,21 @@
 ﻿using MediatR;
 using OneFit.Application.Common.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using OneFit.Application.Common.Interfaces.IRepositories;
+using OneFit.Domain.Entities;
 
 namespace OneFit.Application.Features.Authentication.Commands.RegisterUserCommand
 {
     public class RegisterUserHandler : IRequestHandler<RegisterUserCommand>
     {
         private readonly IIdentityService _identityService;
+        private readonly IApplicationDbContext _context;
 
-        public RegisterUserHandler(IIdentityService identityService)
+        public RegisterUserHandler(
+            IIdentityService identityService,
+            IApplicationDbContext context)
         {
             _identityService = identityService;
+            _context = context;
         }
 
         public async Task Handle(
@@ -29,6 +32,17 @@ namespace OneFit.Application.Features.Authentication.Commands.RegisterUserComman
             {
                 throw new Exception(string.Join(", ", result.Errors));
             }
+
+            var shopper = new Shopper
+            {
+                ShopperId = result.UserId,
+                Name = $"{request.FirstName} {request.LastName}",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Shoppers.Add(shopper);
+
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

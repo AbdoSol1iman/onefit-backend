@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using OneFit.Domain.Entities;
 using OneFit.Domain.Entities.Brands;
 using System;
 using System.Collections.Generic;
@@ -11,7 +12,11 @@ namespace OneFit.Application.Common.Interfaces
         DbSet<Brand> Brands { get; }
 
         DbSet<BrandDocument> BrandDocuments { get; }
-
+        DbSet<Order> Orders { get; }
+        DbSet<SubOrder> SubOrders { get; }
+        DbSet<OrderItem> OrderItems { get; }
+        DbSet<ProductSize> ProductSizes { get; }
+        DbSet<Shopper> Shoppers { get; }
         Task<int> SaveChangesAsync(
             CancellationToken cancellationToken = default);
     }

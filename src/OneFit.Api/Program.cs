@@ -1,6 +1,8 @@
 using OneFit.Api.Endpoints;
 using OneFit.Api.EndPoints.AuthEndPoints;
 using OneFit.Api.EndPoints.Cart;
+using OneFit.Api.EndPoints.Checkouts;
+using OneFit.Api.EndPoints.Orders;
 using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
@@ -53,7 +55,10 @@ app.MapWishlistEndpoints();
 // Cart endpoints
 app.MapCartEndpoints();
 app.MapGetCartEndPoint();
-
+//checkout endpoints
+app.MapCheckoutEndPoint();
+//order endpoints
+app.MapGetOrdersEndPoint();
 // Auth endpoints
 app.MapLoginEndPoint();
 app.MapRegisterBrandEndPoint();

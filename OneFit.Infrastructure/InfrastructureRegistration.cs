@@ -7,7 +7,6 @@ using Microsoft.IdentityModel.Tokens;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Application.Common.Interfaces.Authentication;
 using OneFit.Application.Common.Interfaces.IRepositories;
-using OneFit.Application.Features.Catalog;
 using OneFit.Application.Features.Catalog.Queries.QueryCatalog;
 using OneFit.Infrastructure.Authentication;
 using OneFit.Infrastructure.FileStorage;
@@ -17,7 +16,6 @@ using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Persistence.Repositories;
 using OneFit.Infrastructure.Services;
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace OneFit.Infrastructure
@@ -30,17 +28,58 @@ namespace OneFit.Infrastructure
         {
             // Database & DbContext
             services.AddDbContext<OneFitDbContext>(options =>
-       options.UseNpgsql(
-           configuration.GetConnectionString("DefaultConnection")));
-            services.AddAuthentication();
+                options.UseNpgsql(
+                    configuration.GetConnectionString("DefaultConnection")));
+
             services.AddDataProtection();
 
+            // Identity
             services.AddIdentityCore<ApplicationUser>()
                 .AddRoles<IdentityRole>()
                 .AddSignInManager()
                 .AddEntityFrameworkStores<OneFitDbContext>()
                 .AddDefaultTokenProviders();
 
+            // JWT Settings
+            services.Configure<JwtSettings>(
+                configuration.GetSection("Jwt"));
+
+            var jwtSettings = configuration
+                .GetSection("Jwt")
+                .Get<JwtSettings>()
+                ?? throw new InvalidOperationException(
+                    "JWT settings are not configured.");
+
+            // Authentication
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme =
+                    JwtBearerDefaults.AuthenticationScheme;
+
+                options.DefaultChallengeScheme =
+                    JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters =
+                    new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+
+                        ValidIssuer = jwtSettings.Issuer,
+                        ValidAudience = jwtSettings.Audience,
+
+                        IssuerSigningKey =
+                            new SymmetricSecurityKey(
+                                Encoding.UTF8.GetBytes(
+                                    jwtSettings.SecretKey))
+                    };
+            });
+
+            // Application Services
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<IWishlistRepository, WishlistRepository>();
@@ -52,8 +91,10 @@ namespace OneFit.Infrastructure
             services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IFileStorageService, CloudinaryFileStorageService>();
 
+            // Cloudinary
             services.Configure<CloudinarySettings>(
                 configuration.GetSection("CloudinarySettings"));
+
             // MediatR
             services.AddMediatR(cfg =>
                 cfg.RegisterServicesFromAssembly(

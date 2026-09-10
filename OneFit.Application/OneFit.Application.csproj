@@ -17,4 +17,8 @@
 		<ProjectReference Include="..\OneFit.Domain\OneFit.Domain.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Features\Admin\Commands\" />
+	</ItemGroup>
+
 </Project>

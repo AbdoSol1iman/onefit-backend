@@ -1,11 +1,12 @@
-using System.Text.Json;
 using OneFit.Api.Endpoints;
+using OneFit.Api.EndPoints.AdminEndPoints;
 using OneFit.Api.EndPoints.AuthEndPoints;
 using OneFit.Api.EndPoints.Cart;
 using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Seeding;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +58,8 @@ app.MapCartEndpoints();
 app.MapLoginEndPoint();
 app.MapRegisterBrandEndPoint();
 app.MapRegisterUserEndPoint();
+//brand endpoints
+
 
 var summaries = new[]
 {

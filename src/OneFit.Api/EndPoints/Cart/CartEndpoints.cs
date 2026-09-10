@@ -65,17 +65,12 @@ namespace OneFit.Api.EndPoints.Cart
             }
             catch (NotFoundException ex)
             {
-                return Results.NotFound(new
-                {
-                    error = new { code = ex.ErrorCode, message = ex.Message }
-                });
+                var body = new { error = new { code = ex.ErrorCode, message = ex.Message } };
+                return ex.ErrorCode == "INVALID_REQUEST" ? Results.BadRequest(body) : Results.NotFound(body);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INTERNAL_ERROR", message = ex.Message }
-                });
+                return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error");
             }
         }
 

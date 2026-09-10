@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OneFit.Domain.Entities.Brands;
+using System;
 using System.Collections.Generic;
 
 namespace OneFit.Domain.Entities;

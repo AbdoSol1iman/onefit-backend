@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using OneFit.Domain.Entities;
+using OneFit.Domain.Entities.Brands;
 
 namespace OneFit.Infrastructure.Seeding;
 

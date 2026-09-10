@@ -1,4 +1,6 @@
 using OneFit.Api.Endpoints;
+using OneFit.Api.EndPoints.AuthEndPoints;
+using OneFit.Api.EndPoints.Cart;
 using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
@@ -16,9 +18,14 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
 {
     options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
 });
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
+await app.Services.SeedIdentityAsync();
 
+// Add Authentication & Authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -79,6 +86,13 @@ if (args.Contains("--seed"))
 app.MapCatalogEndpoints();
 //wishlist endpoints
 app.MapWishlistEndpoints();
+//cart endpoints
+app.MapCartEndpoints();
+
+//auth endpoints
+app.MapLoginEndPoint();
+app.MapRegisterBrandEndPoint();
+app.MapRegisterUserEndPoint();
 
 app.Run();
 

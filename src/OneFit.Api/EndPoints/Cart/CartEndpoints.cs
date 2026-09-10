@@ -22,8 +22,8 @@ namespace OneFit.Api.EndPoints.Cart
         public static void MapCartEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/v1/cart")
-                .WithTags("Cart")
-                .WithOpenApi();
+                .WithTags("Cart");
+           
 
             // Add item to cart
             group.MapPost("/items", AddCartItemHandler)

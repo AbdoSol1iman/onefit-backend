@@ -1,5 +1,4 @@
 using OneFit.Api.Endpoints;
-using OneFit.Api.EndPoints.AdminEndPoints;
 using OneFit.Api.EndPoints.AuthEndPoints;
 using OneFit.Api.EndPoints.Cart;
 using OneFit.Api.EndPoints.WishList;
@@ -53,6 +52,7 @@ app.MapWishlistEndpoints();
 
 // Cart endpoints
 app.MapCartEndpoints();
+app.MapGetCartEndPoint();
 
 // Auth endpoints
 app.MapLoginEndPoint();

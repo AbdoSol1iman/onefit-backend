@@ -24,8 +24,8 @@ namespace OneFit.Api.EndPoints.WishList
         public static void MapWishlistEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/v1/wishlist")
-                .WithTags("Wishlist")
-                .WithOpenApi();
+                .WithTags("Wishlist");
+                
 
             // Add item to wishlist
             group.MapPost("/items", AddWishlistItemHandler)

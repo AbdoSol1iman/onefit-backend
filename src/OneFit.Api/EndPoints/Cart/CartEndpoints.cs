@@ -22,8 +22,8 @@ namespace OneFit.Api.EndPoints.Cart
         public static void MapCartEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/v1/cart")
-                .WithTags("Cart")
-                .WithOpenApi();
+                .WithTags("Cart");
+           
 
             // Add item to cart
             group.MapPost("/items", AddCartItemHandler)
@@ -68,9 +68,16 @@ namespace OneFit.Api.EndPoints.Cart
                 var body = new { error = new { code = ex.ErrorCode, message = ex.Message } };
                 return ex.ErrorCode == "INVALID_REQUEST" ? Results.BadRequest(body) : Results.NotFound(body);
             }
-            catch (Exception)
+            //catch (Exception)
+            //{
+            //    return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error");
+            //}
+            catch (Exception ex)   // ⬅️ بدّل دي بدل catch (Exception)
             {
-                return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error");
+                return Results.Problem(
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Internal Server Error",
+                    detail: ex.ToString());   // ⬅️ مؤقتًا بس عشان نشوف السبب الحقيقي
             }
         }
 
@@ -129,6 +136,7 @@ namespace OneFit.Api.EndPoints.Cart
                     error = new { code = "INTERNAL_ERROR", message = ex.Message }
                 });
             }
+
         }
     }
 }

@@ -1,6 +1,10 @@
 using System.Text.Json;
 using OneFit.Api.Endpoints;
+using OneFit.Api.EndPoints.AuthEndPoints;
 using OneFit.Api.EndPoints.Cart;
+using OneFit.Api.EndPoints.Checkouts;
+using OneFit.Api.EndPoints.Orders;
+using OneFit.Api.EndPoints.Payments;
 using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
@@ -9,6 +13,7 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -31,9 +36,16 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod());
 });
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 app.UseCors("AllowFrontend");
+
+await app.Services.SeedIdentityAsync();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("ApiDocs:Enabled"))
 {
@@ -52,7 +64,9 @@ if (args.Contains("--seed"))
     Console.WriteLine("SEED MODE STARTED!");
 
     using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<OneFitDbContext>();
+
+    var db = scope.ServiceProvider
+        .GetRequiredService<OneFitDbContext>();
 
     var jsonPath = Path.Combine(
         AppContext.BaseDirectory,
@@ -67,12 +81,21 @@ if (args.Contains("--seed"))
     await ProductDataSeeder.SeedAsync(db, jsonPath);
 
     Console.WriteLine("SEED DONE!");
+
     return;
 }
 
 app.MapCatalog();
 app.MapProducts();
+app.MapCatalogEndpoints();
 app.MapWishlistEndpoints();
 app.MapCartEndpoints();
+app.MapGetCartEndPoint();
+app.MapCheckoutEndPoint();
+app.MapGetOrdersEndPoint();
+app.MapLoginEndPoint();
+app.MapRegisterBrandEndPoint();
+app.MapRegisterUserEndPoint();
+app.MapStripeWebhookEndpoint();
 
 app.Run();

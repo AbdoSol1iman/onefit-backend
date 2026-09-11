@@ -42,8 +42,6 @@ public partial class OneFitDbContext : IdentityDbContext<ApplicationUser>, IAppl
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Ignore<IdentityPasskeyData>();
-
 
         modelBuilder.HasPostgresExtension("vector");
 

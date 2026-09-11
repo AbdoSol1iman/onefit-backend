@@ -30,7 +30,7 @@ public static class CatalogMEndpoints
         /// - limit (optional): Number of results (1-100), default 10
         /// </remarks>
         app.MapGet("/api/v1/catalog/query", QueryCatalogHandler)
-            .WithName("QueryCatalog")
+            .WithName("QueryCatalogV1")
             .WithSummary("Query catalog products")
             .WithDescription("Retrieves products from catalog with optional filtering by price, category, and availability")
             

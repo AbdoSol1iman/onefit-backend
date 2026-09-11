@@ -1,3 +1,4 @@
+using System.Text.Json;
 using OneFit.Api.Endpoints;
 using OneFit.Api.EndPoints.AuthEndPoints;
 using OneFit.Api.EndPoints.Cart;
@@ -8,96 +9,55 @@ using OneFit.Api.EndPoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Seeding;
-using System.Text.Json;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var cs = builder.Configuration.GetConnectionString("DefaultConnection");
-
-Console.WriteLine("========== DB CONNECTION ==========");
-Console.WriteLine(cs);
-Console.WriteLine("==================================");
-
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
+builder.Services.AddOpenApi();
 builder.Services.AddInfrastructureServices(builder.Configuration);
-
-builder.Services.ConfigureHttpJsonOptions(options =>
+builder.Services.ConfigureHttpJsonOptions(o =>
 {
-    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
-    options.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
+    o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+    o.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
+});
+
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()?
+    .Where(o => !string.IsNullOrWhiteSpace(o))
+    .Append("http://localhost:5173")
+    .Distinct()
+    .ToArray() ?? ["http://localhost:5173"];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod());
 });
 
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+app.UseCors("AllowFrontend");
+
 await app.Services.SeedIdentityAsync();
 
-// Authentication & Authorization middleware
 app.UseAuthentication();
 app.UseAuthorization();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("ApiDocs:Enabled"))
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
+    .WithName("Health")
+    .WithSummary("Liveness probe for Azure health checks and frontend ping.");
+
 app.UseHttpsRedirection();
-
-// Catalog endpoints
-app.MapCatalogEndpoints();
-
-// Wishlist endpoints
-app.MapWishlistEndpoints();
-
-// Cart endpoints
-app.MapCartEndpoints();
-app.MapGetCartEndPoint();
-//checkout endpoints
-app.MapCheckoutEndPoint();
-//order endpoints
-app.MapGetOrdersEndPoint();
-// Auth endpoints
-app.MapLoginEndPoint();
-app.MapRegisterBrandEndPoint();
-app.MapRegisterUserEndPoint();
-//payment endpoints
-app.MapStripeWebhookEndpoint();
-//brand endpoints
-
-
-var summaries = new[]
-{
-    "Freezing",
-    "Bracing",
-    "Chilly",
-    "Cool",
-    "Mild",
-    "Warm",
-    "Balmy",
-    "Hot",
-    "Sweltering",
-    "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5)
-        .Select(index =>
-            new WeatherForecast
-            (
-                DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                Random.Shared.Next(-20, 55),
-                summaries[Random.Shared.Next(summaries.Length)]
-            ))
-        .ToArray();
-
-    return forecast;
-})
-.WithName("GetWeatherForecast");
 
 if (args.Contains("--seed"))
 {
@@ -125,13 +85,17 @@ if (args.Contains("--seed"))
     return;
 }
 
-app.Run();
+app.MapCatalog();
+app.MapProducts();
+app.MapCatalogEndpoints();
+app.MapWishlistEndpoints();
+app.MapCartEndpoints();
+app.MapGetCartEndPoint();
+app.MapCheckoutEndPoint();
+app.MapGetOrdersEndPoint();
+app.MapLoginEndPoint();
+app.MapRegisterBrandEndPoint();
+app.MapRegisterUserEndPoint();
+app.MapStripeWebhookEndpoint();
 
-record WeatherForecast(
-    DateOnly Date,
-    int TemperatureC,
-    string? Summary)
-{
-    public int TemperatureF =>
-        32 + (int)(TemperatureC / 0.5556);
-}
+app.Run();

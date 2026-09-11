@@ -4,10 +4,14 @@ using System.Text;
 
 namespace OneFit.Application.Features.Checkout.Commands
 {
-    public class CheckoutResultDto
+    namespace OneFit.Application.Features.Checkout.Commands
     {
-        public string OrderId { get; set; } = string.Empty;
-        public string PaymentStatus { get; set; } = string.Empty;
-        public decimal GrandTotalEgp { get; set; }
+        public class CheckoutResultDto
+        {
+            public string OrderId { get; set; } = string.Empty;
+            public string PaymentStatus { get; set; } = string.Empty;
+            public decimal GrandTotalEgp { get; set; }
+            public string CheckoutUrl { get; set; } = string.Empty;
+        }
     }
 }

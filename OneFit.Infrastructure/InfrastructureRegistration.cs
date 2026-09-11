@@ -7,10 +7,12 @@ using Microsoft.IdentityModel.Tokens;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Application.Common.Interfaces.Authentication;
 using OneFit.Application.Common.Interfaces.IRepositories;
+using OneFit.Application.Common.Interfaces.Payments;
 using OneFit.Application.Features.Catalog.Queries.QueryCatalog;
 using OneFit.Infrastructure.Authentication;
 using OneFit.Infrastructure.FileStorage;
 using OneFit.Infrastructure.Identity;
+using OneFit.Infrastructure.Payment;
 using OneFit.Infrastructure.Persistence;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Persistence.Repositories;
@@ -49,6 +51,9 @@ namespace OneFit.Infrastructure
                 .Get<JwtSettings>()
                 ?? throw new InvalidOperationException(
                     "JWT settings are not configured.");
+
+            services.Configure<StripeSettings>(
+       configuration.GetSection("Stripe"));
 
             // Authentication
             services.AddAuthentication(options =>
@@ -90,6 +95,8 @@ namespace OneFit.Infrastructure
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IFileStorageService, CloudinaryFileStorageService>();
+            services.AddScoped<IStripePaymentService, StripePaymentService>();
+            services.AddScoped<IStripeWebhookService,StripeWebhookService>();
 
             // Cloudinary
             services.Configure<CloudinarySettings>(

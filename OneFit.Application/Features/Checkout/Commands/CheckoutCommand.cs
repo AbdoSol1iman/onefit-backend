@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using OneFit.Application.Features.Checkout.Commands.OneFit.Application.Features.Checkout.Commands;
 using System;
 using System.Collections.Generic;
 using System.Text;

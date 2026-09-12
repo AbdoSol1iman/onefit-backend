@@ -1,7 +1,14 @@
-using OneFit.Application.Features.Products;
+﻿using OneFit.Application.Features.Products;
 using OneFit.Application.Features.Stylist;
+using OneFit.Application.Features.Stylist.Gemini;
 
 namespace OneFit.Stylist.Tests;
+
+internal sealed class SkippedPlanner : IGeminiOutfitPlanner
+{
+    public Task<PlannerOutcome> PlanAsync(StylistIntent intent, CancellationToken ct = default) =>
+        Task.FromResult<PlannerOutcome>(new PlanSkipped());
+}
 
 internal sealed class FakeProductQueryService : IProductQueryService
 {
@@ -25,8 +32,11 @@ internal sealed class FakeProductQueryService : IProductQueryService
 
 public class StylistOrchestratorTests
 {
-    private static StylistOrchestrator Build(out FakeProductQueryService fake) =>
-        new(new InMemoryStylistSessionStore(), fake = new FakeProductQueryService());
+    private static StylistOrchestrator Build(out FakeProductQueryService fake)
+    {
+        fake = new FakeProductQueryService();
+        return new StylistOrchestrator(new InMemoryStylistSessionStore(), fake, new SkippedPlanner());
+    }
 
     [Fact]
     public async Task WellFormedRequest_ExtractsIntent_AndCallsCatalog()
@@ -65,7 +75,7 @@ public class StylistOrchestratorTests
     {
         var store = new InMemoryStylistSessionStore();
         var fake = new FakeProductQueryService();
-        var sut = new StylistOrchestrator(store, fake);
+        var sut = new StylistOrchestrator(store, fake, new SkippedPlanner());
 
         await sut.HandleAsync("s3", "عايز طقم كاجوال لفرح على البحر");
         var res = await sut.HandleAsync("s3", "2500 جنيه");
@@ -81,7 +91,7 @@ public class StylistOrchestratorTests
     {
         var store = new InMemoryStylistSessionStore();
         var fake = new FakeProductQueryService();
-        var sut = new StylistOrchestrator(store, fake);
+        var sut = new StylistOrchestrator(store, fake, new SkippedPlanner());
 
         await sut.HandleAsync("s4", "عايز طقم كاجوال لفرح على البحر");
         var res = await sut.HandleAsync("s4", "skip");
@@ -109,7 +119,7 @@ public class StylistOrchestratorTests
     {
         var store = new InMemoryStylistSessionStore();
         var fake = new FakeProductQueryService();
-        var sut = new StylistOrchestrator(store, fake);
+        var sut = new StylistOrchestrator(store, fake, new SkippedPlanner());
 
         await sut.HandleAsync("a", "عايز طقم كاجوال لفرح على البحر");
         var res = await sut.HandleAsync("b", "عايز طقم كاجوال لفرح على البحر بميزانية 2500 جنيه");

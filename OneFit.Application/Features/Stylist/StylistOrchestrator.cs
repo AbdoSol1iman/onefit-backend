@@ -1,8 +1,12 @@
 using OneFit.Application.Features.Products;
+using OneFit.Application.Features.Stylist.Gemini;
 
 namespace OneFit.Application.Features.Stylist;
 
-public sealed class StylistOrchestrator(IStylistSessionStore sessions, IProductQueryService products) : IStylistOrchestrator
+public sealed class StylistOrchestrator(
+    IStylistSessionStore sessions,
+    IProductQueryService products,
+    IGeminiOutfitPlanner gemini) : IStylistOrchestrator
 {
     public async Task<StylistResult> HandleAsync(string shopperId, string message, CancellationToken ct = default)
     {
@@ -13,7 +17,7 @@ public sealed class StylistOrchestrator(IStylistSessionStore sessions, IProductQ
         {
             var skipped = session.Intent with { BudgetSkipped = true };
             sessions.Save(shopperId, new StylistSession(skipped, AwaitingBudget: false));
-            return await AssembleAsync(skipped, ct);
+            return await ResolveAsync(skipped, ct);
         }
 
         var fresh = StylistIntentExtractor.Extract(trimmed);
@@ -42,7 +46,47 @@ public sealed class StylistOrchestrator(IStylistSessionStore sessions, IProductQ
         }
 
         sessions.Save(shopperId, new StylistSession(merged, AwaitingBudget: false));
-        return await AssembleAsync(merged, ct);
+        return await ResolveAsync(merged, ct);
+    }
+
+    private async Task<StylistResult> ResolveAsync(StylistIntent intent, CancellationToken ct) =>
+        await gemini.PlanAsync(intent, ct) switch
+        {
+            PlanSkipped => await AssembleAsync(intent, ct),
+            PlanSuccess s => await AssembleFromPlanAsync(intent, s.Plan, ct),
+            PlanRateLimited => new StylistResult(
+                "stylist_busy",
+                "Our stylist is a bit busy right now — please try again in a moment",
+                intent, [], CatalogCalled: false),
+            PlanFailed => new StylistResult(
+                "llm_fallback",
+                "I'm having trouble putting that look together — try rephrasing your request",
+                intent, [], CatalogCalled: false),
+            _ => await AssembleAsync(intent, ct),
+        };
+
+    private async Task<StylistResult> AssembleFromPlanAsync(StylistIntent intent, GeminiOutfitPlan plan, CancellationToken ct)
+    {
+        var outfits = new List<ProductSummaryDto>();
+        foreach (var slot in plan.ItemSlots.Take(3))
+        {
+            var page = await products.ListAsync(new ProductListQuery(
+                Category: slot.Category,
+                MaxPriceEgp: slot.MaxPriceEgp ?? intent.BudgetEgp ?? plan.Budget,
+                Search: null,
+                InStockOnly: true,
+                Sort: "price_asc",
+                Page: 1,
+                PageSize: 20,
+                StyleTags: slot.StyleTags ?? StylistIntentExtractor.ToStyleTags(intent.Style),
+                StyleMatch: "rank",
+                Limit: 1), ct);
+            var first = page.Items.FirstOrDefault();
+            if (first is not null)
+                outfits.Add(first);
+        }
+
+        return new StylistResult("ready", "Assembling your outfits", intent, outfits, CatalogCalled: true, Plan: plan);
     }
 
     private async Task<StylistResult> AssembleAsync(StylistIntent intent, CancellationToken ct)

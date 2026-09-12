@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OneFit.Application.Common.Interfaces.IRepositories;
 using OneFit.Application.Features.Cart.Commands.AddCartItem;
 using OneFit.Application.Features.Products;
+using OneFit.Application.Features.Stylist;
 using OneFit.Infrastructure.Persistence;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Persistence.Repositories;
@@ -20,6 +21,8 @@ public static class InfrastructureRegistration
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped<IProductQueryService, ProductQueryService>();
+        services.AddSingleton<IStylistSessionStore, InMemoryStylistSessionStore>();
+        services.AddScoped<IStylistOrchestrator, StylistOrchestrator>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IWishlistRepository, WishlistRepository>();
         services.AddScoped<ICartRepository, CartRepository>();

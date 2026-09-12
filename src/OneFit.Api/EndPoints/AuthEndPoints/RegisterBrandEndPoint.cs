@@ -13,12 +13,22 @@ namespace OneFit.Api.EndPoints.AuthEndPoints
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                await sender.Send(command, cancellationToken);
-
-                return Results.Ok(new
+                try
                 {
-                    message = "Brand registration submitted successfully. Waiting for admin verification."
-                });
+                    await sender.Send(command, cancellationToken);
+
+                    return Results.Ok(new
+                    {
+                        message = "Brand registration submitted successfully. Waiting for admin verification."
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = ex.Message
+                    });
+                }
             })
             .DisableAntiforgery()
             .WithName("RegisterBrand")

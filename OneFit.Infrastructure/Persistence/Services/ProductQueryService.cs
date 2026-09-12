@@ -20,6 +20,7 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
                 p.ProductId,
                 p.Brand.Name,
                 p.Name,
+                p.Category,
                 p.PriceEgp,
                 p.ProductSizes.Where(s => s.StockQty > 0).OrderBy(s => s.Size).Select(s => s.Size).ToList(),
                 p.ImageUrl))

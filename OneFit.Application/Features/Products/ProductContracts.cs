@@ -7,7 +7,10 @@ public sealed record ProductListQuery(
     bool InStockOnly = true,
     string Sort = "price_asc",
     int Page = 1,
-    int PageSize = 20
+    int PageSize = 20,
+    List<string>? StyleTags = null,
+    string StyleMatch = "rank",
+    int? Limit = null
 );
 
 public sealed record ProductSummaryDto(

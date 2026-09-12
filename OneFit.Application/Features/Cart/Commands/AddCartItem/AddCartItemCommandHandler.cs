@@ -78,15 +78,7 @@ namespace OneFit.Application.Features.Cart.Commands.AddCartItem
             var updatedCart = await _unitOfWork.Cart.GetCartWithItemsAsync(cart.CartId, ct)
                 ?? throw new InvalidOperationException("Cart disappeared immediately after being saved.");
 
-            var items = updatedCart.CartItems
-                .Select(ci => new CartItemDto(ci.ProductId, ci.Brand.Name, ci.ProductSize.Product.PriceEgp, ci.Qty))
-                .ToList();
-
-            return new CartResponse(
-                updatedCart.CartId,
-                items,
-                items.Sum(i => i.PriceEgp * i.Qty),
-                warning is null ? null : new List<CartWarningDto> { warning });
+            return CartMapper.WithWarning(updatedCart, warning);
         }
     }
 }

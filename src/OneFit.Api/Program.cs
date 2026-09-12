@@ -70,7 +70,6 @@ if (args.Contains("--seed"))
     return;
 }
 
-app.MapCatalog();
 app.MapProducts();
 app.MapWishlistEndpoints();
 app.MapCartEndpoints();

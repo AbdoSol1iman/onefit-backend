@@ -1,13 +1,17 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using OneFit.Application.Common.Behaviors;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Application.Common.Interfaces.Authentication;
 using OneFit.Application.Common.Interfaces.IRepositories;
 using OneFit.Application.Common.Interfaces.Payments;
+using OneFit.Application.Features.Authentication.Commands.RegisterBrandCommand;
+using OneFit.Application.Features.Authentication.Commands.RegisterUserCommand;
 using OneFit.Application.Features.Catalog;
 using OneFit.Application.Features.Catalog.Queries.QueryCatalog;
 using OneFit.Application.Features.Products;
@@ -109,8 +113,18 @@ public static class InfrastructureRegistration
 
         // MediatR
         services.AddMediatR(cfg =>
+        {
             cfg.RegisterServicesFromAssembly(
-                typeof(QueryCatalogQuery).Assembly));
+                typeof(QueryCatalogQuery).Assembly);
+            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+        });
+
+        services.AddScoped<
+            IValidator<RegisterBrandCommand>,
+            RegisterBrandValidator>();
+        services.AddScoped<
+            IValidator<RegisterUserCommand>,
+            RegisterUserCommandValidator>();
 
         return services;
     }

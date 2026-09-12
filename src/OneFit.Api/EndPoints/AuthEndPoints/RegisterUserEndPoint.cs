@@ -12,12 +12,22 @@ namespace OneFit.Api.EndPoints.AuthEndPoints
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                await sender.Send(command, cancellationToken);
-
-                return Results.Ok(new
+                try
                 {
-                    message = "Registration successful. You can now login."
-                });
+                    await sender.Send(command, cancellationToken);
+
+                    return Results.Ok(new
+                    {
+                        message = "Registration successful. You can now login."
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = ex.Message
+                    });
+                }
             })
             .WithName("RegisterUser")
             .WithTags("Authentication");

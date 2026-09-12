@@ -14,6 +14,7 @@ public sealed record ProductSummaryDto(
     string ProductId,
     string Brand,
     string Name,
+    string Category,
     decimal PriceEgp,
     List<string> SizesInStock,
     string? ImageUrl

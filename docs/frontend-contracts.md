@@ -15,7 +15,7 @@ All JSON is snake_case. `400` = bad input, `401` = login needed, `404` = not fou
 
 ## Auth (no token needed)
 
-**`POST /api/auth/register`** — `{ "email": "…", "password": "…", "confirm_password": "…", "first_name": "…", "last_name": "…" }` → `200 { "message": "Registration successful…" }`
+**`POST /api/auth/register`** — `{ "email": "…", "password": "…", "confirm_password": "…", "first_name": "…", "last_name": "…" }` → `200 { "message": "Registration successful…" }` · duplicate/bad input → `400 { "message": "…" }` (never 500).
 
 **`POST /api/auth/register/brand`** — brand signup with documents (multipart form).
 
@@ -30,7 +30,7 @@ GET /products?category=shirt&max_price_egp=700&q=linen&in_stock_only=true&sort=p
 ```
 - `q` = name search. `sort` = `price_asc` (default) `| price_desc | newest`.
 - `page >= 1`, `page_size` 1–50 (default 20).
-- Response: `{ "items": [{ "product_id": "…", "brand": "…", "name": "…", "price_egp": 271.12, "sizes_in_stock": ["S","M"], "image_url": "…" }], "page": 1, "page_size": 20, "total": 132 }`.
+- Response: `{ "items": [{ "product_id": "…", "brand": "…", "name": "…", "category": "shirt", "price_egp": 271.12, "sizes_in_stock": ["S","M"], "image_url": "…" }], "page": 1, "page_size": 20, "total": 132 }`.
 
 ## `GET /products/{id}` ✅
 Detail page. Adds `brand_id`, `category`, `style_tags`, full per-size stock:

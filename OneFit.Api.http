@@ -4,16 +4,8 @@ GET {{OneFit.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
-POST {{OneFit.Api_HostAddress}}/catalog/query
-Content-Type: application/json
-
-{
-  "category": "shirt",
-  "max_price_egp": 700,
-  "style_tags": ["casual"],
-  "in_stock_only": true,
-  "limit": 3
-}
+GET {{OneFit.Api_HostAddress}}/products?category=shirt&max_price_egp=700&style_tags=casual,linen&style_match=rank&limit=3
+Accept: application/json
 
 ###
 GET {{OneFit.Api_HostAddress}}/products?category=shirt&max_price_egp=700&q=shirt&page=1&page_size=20

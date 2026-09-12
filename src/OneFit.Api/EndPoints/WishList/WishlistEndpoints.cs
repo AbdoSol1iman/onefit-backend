@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using OneFit.Api.Endpoints.Shared;
 using OneFit.Application.Common.Exceptions;
 using OneFit.Application.Features.WishList.Commands.AddWishlistItem;
 using OneFit.Application.Features.WishList.Commands.RemoveWishlistItem;
@@ -77,12 +78,11 @@ namespace OneFit.Api.EndPoints.WishList
             }
             catch (NotFoundException ex)
             {
-                var body = new { error = new { code = ex.ErrorCode, message = ex.Message } };
-                return ex.ErrorCode == "INVALID_REQUEST" ? Results.BadRequest(body) : Results.NotFound(body);
+                return EndpointHelpers.FromNotFoundException(ex);
             }
             catch (Exception)
             {
-                return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error");
+                return EndpointHelpers.InternalError();
             }
         }
 
@@ -95,21 +95,11 @@ namespace OneFit.Api.EndPoints.WishList
             ISender sender,
             CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(shopperId))
-            {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INVALID_REQUEST", message = "X-Shopper-Id header is required." }
-                });
-            }
-
-            if (string.IsNullOrWhiteSpace(wishlist_item_id))
-            {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INVALID_REQUEST", message = "wishlist_item_id is required." }
-                });
-            }
+            var invalid =
+                EndpointHelpers.Require(shopperId, "X-Shopper-Id", "X-Shopper-Id") ??
+                EndpointHelpers.Require(wishlist_item_id, "wishlist_item_id");
+            if (invalid is not null)
+                return invalid;
 
             try
             {
@@ -124,17 +114,11 @@ namespace OneFit.Api.EndPoints.WishList
             }
             catch (NotFoundException ex)
             {
-                return Results.NotFound(new
-                {
-                    error = new { code = ex.ErrorCode, message = ex.Message }
-                });
+                return EndpointHelpers.FromNotFoundException(ex);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INTERNAL_ERROR", message = ex.Message }
-                });
+                return EndpointHelpers.InternalError();
             }
         }
 
@@ -146,13 +130,9 @@ namespace OneFit.Api.EndPoints.WishList
             ISender sender,
             CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(shopperId))
-            {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INVALID_REQUEST", message = "shopper_id query parameter is required." }
-                });
-            }
+            var invalid = EndpointHelpers.Require(shopperId, "shopper_id query parameter");
+            if (invalid is not null)
+                return invalid;
 
             try
             {
@@ -164,7 +144,7 @@ namespace OneFit.Api.EndPoints.WishList
             }
             catch (Exception)
             {
-                return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error");
+                return EndpointHelpers.InternalError();
             }
         }
     }

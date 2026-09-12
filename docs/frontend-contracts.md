@@ -10,25 +10,18 @@ Local: `http://localhost:5066` · API browser: `/scalar/`
 | `Cors__AllowedOrigins__0` (+ `__1`, …) | Frontend origin(s) — required, else browsers block all calls |
 | `ApiDocs__Enabled` | `true` to expose `/scalar/` online |
 
-## `POST /catalog/query` ✅
-Internal slot search (Stylist). Frontend can reuse it for filtered search.
-```json
-// request
-{ "category": "shirt", "max_price_egp": 700, "style_tags": ["linen"], "in_stock_only": true, "limit": 3 }
-// response: { "results": [{ "product_id": "…", "brand": "Adidas", "name": "…", "price_egp": 271.12, "sizes_in_stock": ["S","M"], "image_url": "…" }] }
-```
-- `category` lowercase, `max_price_egp >= 0`, `style_tags` soft-ranked, `limit` 1–20 (default 3).
-- Empty `results: []` = no match. `400` on bad `limit`.
-
 ## `GET /products` ✅
-Paged list for shop UI.
+Paged list for shop UI + stylist top-N (replaces `POST /catalog/query`, deleted).
 ```
 GET /products?category=shirt&max_price_egp=700&q=linen&in_stock_only=true&sort=price_asc&page=1&page_size=20
+GET /products?category=shirt&max_price_egp=700&style_tags=linen,casual&style_match=rank&limit=3
 ```
 - `q` = name search. `sort` = `price_asc` (default) `| price_desc | newest`.
 - `page >= 1`, `page_size` 1–50 (default 20).
-- Response: `{ "items": [ …same shape as above… ], "page": 1, "page_size": 20, "total": 132 }`.
-- `400` on bad `sort`/`page`/`page_size`.
+- `style_tags` = comma-separated, `style_match` = `rank` (default, soft-ranked) `| all | any`.
+- `limit` 1–20: stylist mode, returns `{ items, page: 1, page_size: limit, total }`, ignores `page/page_size`.
+- Response: `{ "items": [ … ], "page": 1, "page_size": 20, "total": 132 }`.
+- `400` on bad `sort`/`page`/`page_size`/`style_match`/`limit`.
 
 ## `GET /products/{id}` ✅
 Detail page. Adds `brand_id`, `category`, `style_tags`, and full per-size stock:

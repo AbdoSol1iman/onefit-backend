@@ -1,4 +1,5 @@
 using OneFit.Application.Features.Products;
+using OneFit.Application.Features.Stylist.Gemini;
 
 namespace OneFit.Application.Features.Stylist;
 
@@ -20,7 +21,8 @@ public sealed record StylistResult(
     string Reply,
     StylistIntent Intent,
     List<ProductSummaryDto> Outfits,
-    bool CatalogCalled
+    bool CatalogCalled,
+    GeminiOutfitPlan? Plan = null
 );
 
 public interface IStylistSessionStore

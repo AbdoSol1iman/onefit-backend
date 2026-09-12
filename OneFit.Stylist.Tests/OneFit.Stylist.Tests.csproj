@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OneFit.Application\OneFit.Application.csproj" />
+    <ProjectReference Include="..\OneFit.Infrastructure\OneFit.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

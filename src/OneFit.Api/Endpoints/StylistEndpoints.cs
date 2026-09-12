@@ -31,6 +31,19 @@ public static class StylistEndpoints
                     budget_egp = res.Intent.BudgetEgp,
                 },
                 outfits = res.Outfits,
+                plan = res.Plan is null ? null : new
+                {
+                    occasion = res.Plan.Occasion,
+                    budget = res.Plan.Budget,
+                    item_slots = res.Plan.ItemSlots.Select(s => new
+                    {
+                        slot = s.Slot,
+                        category = s.Category,
+                        max_price_egp = s.MaxPriceEgp,
+                        style_tags = s.StyleTags,
+                    }),
+                    reasoning = res.Plan.Reasoning,
+                },
             });
         })
         .WithName("PostStylistMessage")

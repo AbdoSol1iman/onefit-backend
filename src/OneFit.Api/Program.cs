@@ -71,6 +71,7 @@ if (args.Contains("--seed"))
 }
 
 app.MapProducts();
+app.MapStylist();
 app.MapWishlistEndpoints();
 app.MapCartEndpoints();
 

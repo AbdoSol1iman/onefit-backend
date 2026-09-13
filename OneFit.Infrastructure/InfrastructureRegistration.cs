@@ -38,21 +38,35 @@ public static class InfrastructureRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Database & DbContext
+        AddPersistence(services, configuration);
+        AddIdentityAndJwt(services, configuration);
+        AddApplicationServices(services);
+        AddIntegrations(services, configuration);
+
+        return services;
+    }
+
+    private static void AddPersistence(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
         services.AddDbContext<OneFitDbContext>(options =>
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection")));
 
         services.AddDataProtection();
+    }
 
-        // Identity
+    private static void AddIdentityAndJwt(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
         services.AddIdentityCore<ApplicationUser>()
             .AddRoles<IdentityRole>()
             .AddSignInManager()
             .AddEntityFrameworkStores<OneFitDbContext>()
             .AddDefaultTokenProviders();
 
-        // JWT Settings
         services.Configure<JwtSettings>(
             configuration.GetSection("Jwt"));
 
@@ -66,10 +80,6 @@ public static class InfrastructureRegistration
             throw new InvalidOperationException(
                 "Jwt:SecretKey must be at least 256 bits (32 chars). Set the Jwt__SecretKey app setting.");
 
-        services.Configure<StripeSettings>(
-            configuration.GetSection("Stripe"));
-
-        // Authentication
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme =
@@ -97,14 +107,14 @@ public static class InfrastructureRegistration
                                 jwtSettings.SecretKey))
                 };
         });
+    }
 
-        // Application Services
+    private static void AddApplicationServices(IServiceCollection services)
+    {
         services.AddScoped<IProductQueryService, ProductQueryService>();
         services.AddScoped<IFeedService, FeedService>();
         services.AddSingleton<IStylistSessionStore, InMemoryStylistSessionStore>();
         services.AddSingleton<IQuotaMonitor, InMemoryQuotaMonitor>();
-        services.Configure<GeminiOptions>(configuration.GetSection("Gemini"));
-        services.AddHttpClient<IGeminiOutfitPlanner, GeminiOutfitPlanner>();
         services.AddScoped<IStylistOrchestrator, StylistOrchestrator>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IWishlistRepository, WishlistRepository>();
@@ -114,15 +124,7 @@ public static class InfrastructureRegistration
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
-        services.AddScoped<IFileStorageService, CloudinaryFileStorageService>();
-        services.AddScoped<IStripePaymentService, StripePaymentService>();
-        services.AddScoped<IStripeWebhookService, StripeWebhookService>();
 
-        // Cloudinary
-        services.Configure<CloudinarySettings>(
-            configuration.GetSection("CloudinarySettings"));
-
-        // MediatR
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(
@@ -136,8 +138,21 @@ public static class InfrastructureRegistration
         services.AddScoped<
             IValidator<RegisterUserCommand>,
             RegisterUserCommandValidator>();
+    }
 
-        return services;
+    private static void AddIntegrations(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<GeminiOptions>(configuration.GetSection("Gemini"));
+        services.AddHttpClient<IGeminiOutfitPlanner, GeminiOutfitPlanner>();
+        services.AddScoped<IFileStorageService, CloudinaryFileStorageService>();
+        services.Configure<CloudinarySettings>(
+            configuration.GetSection("CloudinarySettings"));
+        services.Configure<StripeSettings>(
+            configuration.GetSection("Stripe"));
+        services.AddScoped<IStripePaymentService, StripePaymentService>();
+        services.AddScoped<IStripeWebhookService, StripeWebhookService>();
     }
 
     public static async Task SeedIdentityAsync(

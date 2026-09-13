@@ -30,6 +30,7 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
                     r.ProductId,
                     r.Brand,
                     r.Name,
+                    r.Category,
                     r.PriceEgp,
                     r.Sizes,
                     r.ImageUrl))
@@ -44,6 +45,7 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
                 p.ProductId,
                 p.Brand.Name,
                 p.Name,
+                p.Category,
                 p.PriceEgp,
                 p.ProductSizes.Where(s => s.StockQty > 0).OrderBy(s => s.Size).Select(s => s.Size).ToList(),
                 p.ImageUrl))
@@ -122,6 +124,7 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
         string ProductId,
         string Brand,
         string Name,
+        string Category,
         decimal PriceEgp,
         string? ImageUrl,
         List<string>? StyleTags,
@@ -134,7 +137,7 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
         {
             var ranked = await FetchRankedAsync(baseQuery, query, 50, ct);
             return ranked.Skip(skip).Take(take)
-                .Select(r => new ProductSummaryDto(r.ProductId, r.Brand, r.Name, r.PriceEgp, r.Sizes, r.ImageUrl))
+                .Select(r => new ProductSummaryDto(r.ProductId, r.Brand, r.Name, r.Category, r.PriceEgp, r.Sizes, r.ImageUrl))
                 .ToList();
         }
 
@@ -145,6 +148,7 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
                 p.ProductId,
                 p.Brand.Name,
                 p.Name,
+                p.Category,
                 p.PriceEgp,
                 p.ProductSizes.Where(s => s.StockQty > 0).OrderBy(s => s.Size).Select(s => s.Size).ToList(),
                 p.ImageUrl))
@@ -161,6 +165,7 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
                 p.ProductId,
                 p.Brand.Name,
                 p.Name,
+                p.Category,
                 p.PriceEgp,
                 p.ImageUrl,
                 p.StyleTags,

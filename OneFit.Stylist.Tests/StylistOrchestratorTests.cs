@@ -21,7 +21,7 @@ internal sealed class FakeProductQueryService : IProductQueryService
         LastQuery = query;
         var items = new List<ProductSummaryDto>
         {
-            new("p1", "Brand", "Shirt", 500, ["M"], null),
+            new("p1", "Brand", "Shirt", "shirt", 500, ["M"], null),
         };
         return Task.FromResult(new PagedResult<ProductSummaryDto>(items, 1, query.Limit ?? query.PageSize, 1));
     }

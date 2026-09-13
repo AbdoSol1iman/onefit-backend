@@ -1,15 +1,15 @@
 ﻿using MediatR;
-using OneFit.Application.Features.Orders.Queries;
+using OneFit.Application.Features.Checkout.Commands;
 using System.Security.Claims;
 
-namespace OneFit.Api.EndPoints.Orders
+namespace OneFit.Api.Endpoints.Checkouts
 {
-    public static class GetOrdersEndPoint
+    public static class CheckoutEndPoint
     {
-        public static void MapGetOrdersEndPoint(
+        public static void MapCheckoutEndPoint(
             this IEndpointRouteBuilder app)
         {
-            app.MapGet("/api/v1/orders", async (
+            app.MapPost("/api/v1/checkout", async (
                 ClaimsPrincipal user,
                 ISender sender,
                 CancellationToken cancellationToken) =>
@@ -20,7 +20,7 @@ namespace OneFit.Api.EndPoints.Orders
                     return Results.Unauthorized();
 
                 var result = await sender.Send(
-                    new GetOrdersQuery
+                    new CheckoutCommand
                     {
                         ShopperId = shopperId
                     },
@@ -29,8 +29,8 @@ namespace OneFit.Api.EndPoints.Orders
                 return Results.Ok(result);
             })
             .RequireAuthorization()
-            .WithName("GetOrders")
-            .WithTags("Orders");
+            .WithName("Checkout")
+            .WithTags("Checkout");
         }
     }
 }

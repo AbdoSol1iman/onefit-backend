@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace OneFit.Api.EndPoints.Cart
+namespace OneFit.Api.Endpoints.Cart
 {
     /// <summary>
     /// Request model for adding an item to the shopping cart

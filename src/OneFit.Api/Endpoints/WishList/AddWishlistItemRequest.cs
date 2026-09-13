@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace OneFit.Api.EndPoints.WishList
+namespace OneFit.Api.Endpoints.WishList
 {
     /// <summary>
     /// Request model for adding an item to the wishlist

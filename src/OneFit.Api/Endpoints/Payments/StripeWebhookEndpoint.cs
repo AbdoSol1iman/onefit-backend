@@ -1,7 +1,7 @@
 ﻿using OneFit.Application.Common.Interfaces.Payments;
 using Stripe;
 
-namespace OneFit.Api.EndPoints.Payments
+namespace OneFit.Api.Endpoints.Payments
 {
     public static class StripeWebhookEndpoint
     {

@@ -2,7 +2,7 @@
 using OneFit.Application.Features.Cart.Queries.GetCart;
 using System.Security.Claims;
 
-namespace OneFit.Api.EndPoints.Cart
+namespace OneFit.Api.Endpoints.Cart
 {
     public static class GetCartEndPoint
     {

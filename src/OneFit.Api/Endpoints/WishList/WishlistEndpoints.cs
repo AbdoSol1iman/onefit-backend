@@ -6,7 +6,7 @@ using OneFit.Application.Features.WishList.Commands.AddWishlistItem;
 using OneFit.Application.Features.WishList.Commands.RemoveWishlistItem;
 using OneFit.Application.Features.WishList.Queries.GetWishlist;
 
-namespace OneFit.Api.EndPoints.WishList
+namespace OneFit.Api.Endpoints.WishList
 {
     /// <summary>
     /// Wishlist endpoints for managing wishlist operations

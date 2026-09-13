@@ -5,7 +5,7 @@ using OneFit.Application.Common.Exceptions;
 using OneFit.Application.Features.Cart.Commands.AddCartItem;
 using OneFit.Application.Features.Cart.Commands.RemoveCartItem;
 
-namespace OneFit.Api.EndPoints.Cart
+namespace OneFit.Api.Endpoints.Cart
 {
     /// <summary>
     /// Cart endpoints for managing shopping cart operations

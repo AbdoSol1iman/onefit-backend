@@ -34,6 +34,8 @@ public partial class OneFitDbContext : IdentityDbContext<ApplicationUser>, IAppl
 
     public virtual DbSet<Shopper> Shoppers { get; set; }
 
+    public virtual DbSet<UserInteraction> UserInteractions { get; set; }
+
     public virtual DbSet<SubOrder> SubOrders { get; set; }
 
     public virtual DbSet<WishlistItem> WishlistItems { get; set; }

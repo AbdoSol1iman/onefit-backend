@@ -15,6 +15,8 @@ public partial class Brand
     // Brand verification status
     public BrandStatusEnum Status { get; set; }
 
+    public bool IsLocal { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<BrandDocument> Documents { get; set; }

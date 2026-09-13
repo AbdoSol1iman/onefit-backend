@@ -2,7 +2,7 @@
 using OneFit.Application.Common.Interfaces.Authentication;
 using OneFit.Application.Features.Authentication.DTOs;
 
-namespace OneFit.Api.EndPoints.AuthEndPoints
+namespace OneFit.Api.Endpoints.AuthEndPoints
 {
     public static class LoginEndPoint
     {

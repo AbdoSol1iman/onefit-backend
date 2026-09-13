@@ -1,14 +1,15 @@
 ﻿using MediatR;
-using OneFit.Application.Features.Authentication.Commands.RegisterUserCommand;
+using Microsoft.AspNetCore.Mvc;
+using OneFit.Application.Features.Authentication.Commands.RegisterBrandCommand;
 
-namespace OneFit.Api.EndPoints.AuthEndPoints
+namespace OneFit.Api.Endpoints.AuthEndPoints
 {
-    public static class RegisterUserEndPoint
+    public static class RegisterBrandEndPoint
     {
-        public static void MapRegisterUserEndPoint(this IEndpointRouteBuilder app)
+        public static void MapRegisterBrandEndPoint(this IEndpointRouteBuilder app)
         {
-            app.MapPost("/api/auth/register", async (
-                RegisterUserCommand command,
+            app.MapPost("/api/auth/register/brand", async (
+                  [FromForm] RegisterBrandCommand command,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
@@ -18,7 +19,7 @@ namespace OneFit.Api.EndPoints.AuthEndPoints
 
                     return Results.Ok(new
                     {
-                        message = "Registration successful. You can now login."
+                        message = "Brand registration submitted successfully. Waiting for admin verification."
                     });
                 }
                 catch (Exception ex)
@@ -29,7 +30,8 @@ namespace OneFit.Api.EndPoints.AuthEndPoints
                     });
                 }
             })
-            .WithName("RegisterUser")
+            .DisableAntiforgery()
+            .WithName("RegisterBrand")
             .WithTags("Authentication");
         }
     }

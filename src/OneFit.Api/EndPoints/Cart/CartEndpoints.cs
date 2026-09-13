@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using OneFit.Api.Endpoints.Shared;
 using OneFit.Application.Common.Exceptions;
 using OneFit.Application.Features.Cart.Commands.AddCartItem;
 using OneFit.Application.Features.Cart.Commands.RemoveCartItem;
@@ -65,19 +66,11 @@ namespace OneFit.Api.EndPoints.Cart
             }
             catch (NotFoundException ex)
             {
-                var body = new { error = new { code = ex.ErrorCode, message = ex.Message } };
-                return ex.ErrorCode == "INVALID_REQUEST" ? Results.BadRequest(body) : Results.NotFound(body);
+                return EndpointHelpers.FromNotFoundException(ex);
             }
-            //catch (Exception)
-            //{
-            //    return Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error");
-            //}
-            catch (Exception ex)   // ⬅️ بدّل دي بدل catch (Exception)
+            catch (Exception)
             {
-                return Results.Problem(
-                    statusCode: StatusCodes.Status500InternalServerError,
-                    title: "Internal Server Error",
-                    detail: ex.ToString());   // ⬅️ مؤقتًا بس عشان نشوف السبب الحقيقي
+                return EndpointHelpers.InternalError();
             }
         }
 
@@ -91,29 +84,12 @@ namespace OneFit.Api.EndPoints.Cart
             ISender sender,
             CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(shopperId))
-            {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INVALID_REQUEST", message = "X-Shopper-Id header is required." }
-                });
-            }
-
-            if (string.IsNullOrWhiteSpace(product_id))
-            {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INVALID_REQUEST", message = "product_id is required." }
-                });
-            }
-
-            if (string.IsNullOrWhiteSpace(size))
-            {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INVALID_REQUEST", message = "size is required." }
-                });
-            }
+            var invalid =
+                EndpointHelpers.Require(shopperId, "X-Shopper-Id", "X-Shopper-Id") ??
+                EndpointHelpers.Require(product_id, "product_id") ??
+                EndpointHelpers.Require(size, "size");
+            if (invalid is not null)
+                return invalid;
 
             try
             {
@@ -124,17 +100,11 @@ namespace OneFit.Api.EndPoints.Cart
             }
             catch (NotFoundException ex)
             {
-                return Results.NotFound(new
-                {
-                    error = new { code = ex.ErrorCode, message = ex.Message }
-                });
+                return EndpointHelpers.FromNotFoundException(ex);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Results.BadRequest(new
-                {
-                    error = new { code = "INTERNAL_ERROR", message = ex.Message }
-                });
+                return EndpointHelpers.InternalError();
             }
 
         }

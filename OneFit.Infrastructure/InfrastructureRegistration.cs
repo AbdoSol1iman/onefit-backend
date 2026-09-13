@@ -9,12 +9,14 @@ using OneFit.Application.Common.Behaviors;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Application.Common.Interfaces.Authentication;
 using OneFit.Application.Common.Interfaces.IRepositories;
-using OneFit.Application.Common.Interfaces.Payments;
 using OneFit.Application.Features.Authentication.Commands.RegisterBrandCommand;
 using OneFit.Application.Features.Authentication.Commands.RegisterUserCommand;
-using OneFit.Application.Features.Catalog;
-using OneFit.Application.Features.Catalog.Queries.QueryCatalog;
+using OneFit.Application.Features.Cart.Commands.AddCartItem;
 using OneFit.Application.Features.Products;
+using OneFit.Application.Features.Stylist;
+using OneFit.Application.Features.Stylist.Gemini;
+using OneFit.Infrastructure.Ai;
+using OneFit.Application.Common.Interfaces.Payments;
 using OneFit.Infrastructure.Authentication;
 using OneFit.Infrastructure.FileStorage;
 using OneFit.Infrastructure.Identity;
@@ -59,6 +61,10 @@ public static class InfrastructureRegistration
             ?? throw new InvalidOperationException(
                 "JWT settings are not configured.");
 
+        if (Encoding.UTF8.GetByteCount(jwtSettings.SecretKey) < 32)
+            throw new InvalidOperationException(
+                "Jwt:SecretKey must be at least 256 bits (32 chars). Set the Jwt__SecretKey app setting.");
+
         services.Configure<StripeSettings>(
             configuration.GetSection("Stripe"));
 
@@ -92,10 +98,13 @@ public static class InfrastructureRegistration
         });
 
         // Application Services
-        services.AddScoped<ICatalogQueryService, CatalogQueryService>();
         services.AddScoped<IProductQueryService, ProductQueryService>();
+        services.AddSingleton<IStylistSessionStore, InMemoryStylistSessionStore>();
+        services.AddSingleton<IQuotaMonitor, InMemoryQuotaMonitor>();
+        services.Configure<GeminiOptions>(configuration.GetSection("Gemini"));
+        services.AddHttpClient<IGeminiOutfitPlanner, GeminiOutfitPlanner>();
+        services.AddScoped<IStylistOrchestrator, StylistOrchestrator>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IWishlistRepository, WishlistRepository>();
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IIdentityService, IdentityService>();
@@ -115,7 +124,7 @@ public static class InfrastructureRegistration
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(
-                typeof(QueryCatalogQuery).Assembly);
+                typeof(AddCartItemCommand).Assembly);
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
 

@@ -16,11 +16,14 @@ public static class ProductEndpoints
             string? sort,
             int? page,
             int? page_size,
+            string? style_tags,
+            string? style_match,
+            int? limit,
             IProductQueryService service,
             CancellationToken ct) =>
         {
             var parsed = ProductListParser.TryParse(
-                category, max_price_egp, q, in_stock_only, sort, page, page_size);
+                category, max_price_egp, q, in_stock_only, sort, page, page_size, style_tags, style_match, limit);
             if (parsed.Error is not null)
                 return Results.BadRequest(new { error = parsed.Error });
 
@@ -28,7 +31,7 @@ public static class ProductEndpoints
             return Results.Ok(res);
         })
         .WithName("ListProducts")
-        .WithSummary("Public paginated product list with filters, search and sort.");
+        .WithSummary("Public paginated product list with filters, search, style_tags and sort. Use limit for stylist-style top-N or page/page_size for shop UI.");
 
         group.MapGet("/{id}", async (string id, IProductQueryService service, CancellationToken ct) =>
         {

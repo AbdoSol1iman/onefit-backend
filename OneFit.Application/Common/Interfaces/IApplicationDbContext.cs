@@ -17,6 +17,8 @@ namespace OneFit.Application.Common.Interfaces
         DbSet<OrderItem> OrderItems { get; }
         DbSet<ProductSize> ProductSizes { get; }
         DbSet<Shopper> Shoppers { get; }
+        DbSet<UserInteraction> UserInteractions { get; }
+        DbSet<Product> Products { get; }
         DbSet<Cart> Carts { get; }
         DbSet<CartItem> CartItems { get; }
         Task<int> SaveChangesAsync(

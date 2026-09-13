@@ -12,6 +12,7 @@ using OneFit.Application.Common.Interfaces.IRepositories;
 using OneFit.Application.Features.Authentication.Commands.RegisterBrandCommand;
 using OneFit.Application.Features.Authentication.Commands.RegisterUserCommand;
 using OneFit.Application.Features.Cart.Commands.AddCartItem;
+using OneFit.Application.Features.Feed;
 using OneFit.Application.Features.Products;
 using OneFit.Application.Features.Stylist;
 using OneFit.Application.Features.Stylist.Gemini;
@@ -99,6 +100,7 @@ public static class InfrastructureRegistration
 
         // Application Services
         services.AddScoped<IProductQueryService, ProductQueryService>();
+        services.AddScoped<IFeedService, FeedService>();
         services.AddSingleton<IStylistSessionStore, InMemoryStylistSessionStore>();
         services.AddSingleton<IQuotaMonitor, InMemoryQuotaMonitor>();
         services.Configure<GeminiOptions>(configuration.GetSection("Gemini"));

@@ -85,9 +85,8 @@ if (args.Contains("--seed"))
     return;
 }
 
-app.MapCatalog();
 app.MapProducts();
-app.MapCatalogEndpoints();
+app.MapStylist();
 app.MapWishlistEndpoints();
 app.MapCartEndpoints();
 app.MapGetCartEndPoint();

@@ -31,6 +31,10 @@ public class BrandConfiguration : IEntityTypeConfiguration<Brand>
             .HasConversion<int>()
             .HasDefaultValue(BrandStatusEnum.Approved);
 
+        builder.Property(e => e.IsLocal)
+            .HasColumnName("is_local")
+            .HasDefaultValue(false);
+
         builder.Property(e => e.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamp with time zone")

@@ -5,6 +5,7 @@ using OneFit.Api.Endpoints.Cart;
 using OneFit.Api.Endpoints.Checkouts;
 using OneFit.Api.Endpoints.Orders;
 using OneFit.Api.Endpoints.Payments;
+using OneFit.Api.Endpoints.Feed;
 using OneFit.Api.Endpoints.WishList;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
@@ -87,6 +88,7 @@ if (args.Contains("--seed"))
 
 app.MapProducts();
 app.MapStylist();
+app.MapFeedEndpoints();
 app.MapWishlistEndpoints();
 app.MapCartEndpoints();
 app.MapGetCartEndPoint();

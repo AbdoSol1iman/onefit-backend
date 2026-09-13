@@ -1,11 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using OneFit.Application.Common.Interfaces;
 using OneFit.Domain.Entities;
+using OneFit.Domain.Entities.Brands;
+using OneFit.Infrastructure.Identity;
 
 namespace OneFit.Infrastructure.Persistence.Data;
 
-public partial class OneFitDbContext : DbContext
+public partial class OneFitDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
     public OneFitDbContext(DbContextOptions<OneFitDbContext> options)
         : base(options)
@@ -15,6 +18,7 @@ public partial class OneFitDbContext : DbContext
     public virtual DbSet<Alert> Alerts { get; set; }
 
     public virtual DbSet<Brand> Brands { get; set; }
+    public virtual DbSet<BrandDocument> BrandDocuments { get; set; }
 
     public virtual DbSet<Cart> Carts { get; set; }
 
@@ -36,11 +40,14 @@ public partial class OneFitDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Ignore<IdentityPasskeyData>();
+
+
         modelBuilder.HasPostgresExtension("vector");
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OneFitDbContext).Assembly);
-
-
 
         OnModelCreatingPartial(modelBuilder);
     }

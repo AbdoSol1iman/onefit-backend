@@ -75,10 +75,16 @@ public sealed class StylistOrchestrator(
 
         if (result.Outfits.Count > 0)
         {
-            foreach (var outfit in result.Outfits)
+            var unique = result.Outfits
+                .GroupBy(o => o.ProductId, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+            foreach (var outfit in unique)
                 shown.Add(outfit.ProductId);
             var current = sessions.GetOrCreate(shopperId);
             sessions.Save(shopperId, current with { ShownProductIds = shown.ToList() });
+            if (unique.Count != result.Outfits.Count)
+                return result with { Outfits = unique };
         }
 
         return result;
@@ -87,6 +93,7 @@ public sealed class StylistOrchestrator(
     private async Task<StylistResult> AssembleFromPlanAsync(StylistIntent intent, GeminiOutfitPlan plan, HashSet<string> shown, CancellationToken ct)
     {
         var outfits = new List<ProductSummaryDto>();
+        var picked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var slot in plan.ItemSlots.Take(3))
         {
             var page = await products.ListAsync(new ProductListQuery(
@@ -100,12 +107,14 @@ public sealed class StylistOrchestrator(
                 StyleTags: slot.StyleTags ?? StylistIntentExtractor.ToStyleTags(intent.Style),
                 StyleMatch: "rank",
                 Limit: 5), ct);
-            var pick = page.Items.FirstOrDefault(i => !shown.Contains(i.ProductId))
+            var pick = page.Items.FirstOrDefault(i => !shown.Contains(i.ProductId) && !picked.Contains(i.ProductId))
+                ?? page.Items.FirstOrDefault(i => !picked.Contains(i.ProductId))
                 ?? page.Items.FirstOrDefault();
             if (pick is not null)
             {
                 outfits.Add(pick);
                 shown.Add(pick.ProductId);
+                picked.Add(pick.ProductId);
             }
         }
 

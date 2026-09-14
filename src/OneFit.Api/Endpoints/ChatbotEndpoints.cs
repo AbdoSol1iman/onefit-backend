@@ -48,6 +48,7 @@ public static class ChatbotEndpoints
             }
         })
         .WithName("PostChatbotMessage")
+        .WithTags("Chatbot")
         .WithSummary("Proxy to mohamedtamer00/chatbot docker (POST /chatbot/?UserQuery=&NewChat=) and enrich returned IDs into full product details.");
     }
 }

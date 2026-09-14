@@ -51,8 +51,15 @@ public static class FeedEndpoints
         if (!await service.ProductExistsAsync(request.ProductId, ct))
             return Results.NotFound(new { error = new { code = "PRODUCT_NOT_FOUND", message = $"No product '{request.ProductId}' was found." } });
 
-        await service.RecordAsync(shopperId, request.ProductId, type, ct);
-        return Results.Ok(new { recorded = true });
+        try
+        {
+            await service.RecordAsync(shopperId, request.ProductId, type, ct);
+            return Results.Ok(new { recorded = true });
+        }
+        catch (Exception)
+        {
+            return EndpointHelpers.InternalError();
+        }
     }
 
     private static async Task<IResult> GetFeedHandler(
@@ -69,7 +76,14 @@ public static class FeedEndpoints
         if (take < 1 || take > 50)
             return EndpointHelpers.BadRequest("INVALID_REQUEST", "limit must be between 1 and 50.");
 
-        var feed = await service.GetFeedAsync(shopperId, take, ct);
-        return Results.Ok(new { feed });
+        try
+        {
+            var feed = await service.GetFeedAsync(shopperId, take, ct);
+            return Results.Ok(new { feed });
+        }
+        catch (Exception)
+        {
+            return EndpointHelpers.InternalError();
+        }
     }
 }

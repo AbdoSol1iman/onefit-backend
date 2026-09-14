@@ -8,8 +8,11 @@ public sealed class StylistOrchestrator(
     IProductQueryService products,
     IGeminiOutfitPlanner gemini) : IStylistOrchestrator
 {
-    public async Task<StylistResult> HandleAsync(string shopperId, string message, CancellationToken ct = default)
+    public async Task<StylistResult> HandleAsync(string shopperId, string message, bool newChat = false, CancellationToken ct = default)
     {
+        if (newChat)
+            sessions.Reset(shopperId);
+
         var session = sessions.GetOrCreate(shopperId);
         var trimmed = message.Trim();
 

@@ -12,6 +12,7 @@ All JSON is snake_case. `400` = bad input, `401` = login needed, `404` = not fou
 | `Cors__AllowedOrigins__0` (+ `__1`, …) | Frontend origin(s) — required, else browsers block all calls |
 | `ApiDocs__Enabled` | `true` to expose `/scalar/` online |
 | `Jwt__SecretKey`, `Stripe__*`, `CloudinarySettings__*` | Secrets — never commit, app settings only |
+| `Frontend__BaseUrl` | Public frontend origin (Stripe success/cancel redirects). Required in prod, else payment redirects go to localhost |
 
 ## Auth (no token needed)
 
@@ -43,11 +44,18 @@ Detail page. Adds `brand_id`, `category`, `style_tags`, full per-size stock:
 ```
 
 ## `POST /stylist/message` ✅
-Stylist chat: `{ "shopper_id": "s1", "message": "عايز طقم كاجوال لفرح على البحر بميزانية 2500 جنيه" }` → `{ "status": "ready|need_budget|off_topic|llm_fallback|stylist_busy", "reply": "…", "intent": { "occasion": "wedding", "setting": "beach", "style": "casual", "budget_egp": 2500 }, "outfits": […], "plan": { "item_slots": […] } | null }`.
+Stylist chat: `{ "shopper_id": "s1", "message": "عايز طقم كاجوال لفرح على البحر بميزانية 2500 جنيه", "new_chat": true }` → `{ "status": "ready|need_budget|off_topic|llm_fallback|stylist_busy", "reply": "…", "intent": { "occasion": "wedding", "setting": "beach", "style": "casual", "budget_egp": 2500 }, "outfits": […], "plan": { "item_slots": […] } | null }`.
+- `new_chat: true` starts a fresh conversation (resets stored intent). Omit/`false` continues the shopper's session (follow-ups merge into prior intent).
 - Missing budget → `need_budget` + follow-up question, no catalog call. `skip` skips budget.
 - Off-topic → `off_topic` redirect, no catalog call.
 - LLM invalid twice → `llm_fallback`; Gemini quota hit → `stylist_busy`.
 - Uses `GET /products` semantics internally (`limit: 3`, style-ranked).
+
+## `POST /chatbot/message` ✅
+Docker AI chatbot proxy (different from `/stylist/message`): `{ "shopper_id": "s1", "message": "عايز تيشيرت كاجوال", "new_chat": true }` → `{ "status": "ready|off_topic", "reply": "…", "product_ids": ["…"], "products": [{full detail}], "missing_ids": ["…"] }`.
+- `new_chat: true` starts a fresh chat on the bot side.
+- `ready` = bot returned product IDs, enriched from our DB; IDs with no DB match land in `missing_ids`.
+- Off-topic prompt → `off_topic` with the bot's message, empty arrays.
 
 ## Catalog query endpoints — removed
 `POST /catalog/query` and `GET /api/v1/catalog/query` are deleted. Use `GET /products` with `style_tags` + `limit` instead (same replacement as above).

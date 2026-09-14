@@ -22,12 +22,22 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
                         message = "Brand registration submitted successfully. Waiting for admin verification."
                     });
                 }
-                catch (Exception ex)
+                catch (FluentValidation.ValidationException ex)
                 {
                     return Results.BadRequest(new
                     {
-                        message = ex.Message
+                        message = ex.Errors.Select(e => e.ErrorMessage).FirstOrDefault()
+                            ?? "Validation failed."
                     });
+                }
+                catch (Exception)
+                {
+                    return Results.Json(
+                        new
+                        {
+                            message = "Brand registration failed. Please try again later."
+                        },
+                        statusCode: StatusCodes.Status500InternalServerError);
                 }
             })
             .DisableAntiforgery()

@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.Extensions.Configuration;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Application.Common.Interfaces.IRepositories;
 using OneFit.Application.Common.Interfaces.Payments;
@@ -13,15 +14,18 @@ namespace OneFit.Application.Features.Checkout.Commands
         private readonly ICartRepository _cartRepository;
         private readonly IApplicationDbContext _context;
         private readonly IStripePaymentService _stripePaymentService;
+        private readonly string _frontendBaseUrl;
 
         public CheckoutHandler(
             ICartRepository cartRepository,
             IApplicationDbContext context,
-            IStripePaymentService stripePaymentService)
+            IStripePaymentService stripePaymentService,
+            IConfiguration configuration)
         {
             _cartRepository = cartRepository;
             _context = context;
             _stripePaymentService = stripePaymentService;
+            _frontendBaseUrl = (configuration["Frontend:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
         }
 
         public async Task<CheckoutResultDto> Handle(
@@ -146,8 +150,8 @@ namespace OneFit.Application.Features.Checkout.Commands
                         order.OrderId,
                         order.GrandTotalEgp,
                         "egp",
-                        "https://localhost:5173/payment/success",
-                        "https://localhost:5173/payment/cancel");
+                        $"{_frontendBaseUrl}/payment/success",
+                        $"{_frontendBaseUrl}/payment/cancel");
 
             return new CheckoutResultDto
             {

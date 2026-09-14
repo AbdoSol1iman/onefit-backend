@@ -29,9 +29,10 @@ public interface IStylistSessionStore
 {
     StylistSession GetOrCreate(string shopperId);
     void Save(string shopperId, StylistSession session);
+    void Reset(string shopperId);
 }
 
 public interface IStylistOrchestrator
 {
-    Task<StylistResult> HandleAsync(string shopperId, string message, CancellationToken ct = default);
+    Task<StylistResult> HandleAsync(string shopperId, string message, bool newChat = false, CancellationToken ct = default);
 }

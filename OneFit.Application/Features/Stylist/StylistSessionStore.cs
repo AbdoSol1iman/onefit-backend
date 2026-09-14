@@ -11,4 +11,7 @@ public sealed class InMemoryStylistSessionStore : IStylistSessionStore
 
     public void Save(string shopperId, StylistSession session) =>
         _sessions[shopperId] = session;
+
+    public void Reset(string shopperId) =>
+        _sessions.TryRemove(shopperId, out _);
 }

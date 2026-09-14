@@ -4,7 +4,7 @@ namespace OneFit.Api.Endpoints;
 
 public static class StylistEndpoints
 {
-    public sealed record StylistMessageRequest(string? ShopperId, string? Message);
+    public sealed record StylistMessageRequest(string? ShopperId, string? Message, bool? NewChat);
 
     public static void MapStylist(this WebApplication app)
     {
@@ -18,7 +18,9 @@ public static class StylistEndpoints
             if (string.IsNullOrWhiteSpace(req.Message))
                 return Results.BadRequest(new { error = "message is required" });
 
-            var res = await orchestrator.HandleAsync(req.ShopperId.Trim(), req.Message.Trim(), ct);
+            try
+            {
+                var res = await orchestrator.HandleAsync(req.ShopperId.Trim(), req.Message.Trim(), req.NewChat ?? false, ct);
             return Results.Ok(new
             {
                 status = res.Status,
@@ -45,6 +47,25 @@ public static class StylistEndpoints
                     reasoning = res.Plan.Reasoning,
                 },
             });
+            }
+            catch (HttpRequestException)
+            {
+                return Results.Json(
+                    new { error = "stylist service unavailable" },
+                    statusCode: StatusCodes.Status502BadGateway);
+            }
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+            {
+                return Results.Json(
+                    new { error = "stylist service timed out" },
+                    statusCode: StatusCodes.Status504GatewayTimeout);
+            }
+            catch (Exception)
+            {
+                return Results.Json(
+                    new { error = "stylist failed to assemble outfits" },
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
         })
         .WithName("PostStylistMessage")
         .WithSummary("Stylist chat: free-text outfit need → intent → gated outfit assembly.");

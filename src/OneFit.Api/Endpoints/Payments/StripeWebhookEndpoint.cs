@@ -45,6 +45,12 @@ namespace OneFit.Api.Endpoints.Payments
                     {
                         return Results.BadRequest();
                     }
+                    catch (Exception)
+                    {
+                        return Results.Json(
+                            new { error = "webhook processing failed" },
+                            statusCode: StatusCodes.Status500InternalServerError);
+                    }
                 })
                 .WithName("StripeWebhook")
                 .WithTags("Payments");

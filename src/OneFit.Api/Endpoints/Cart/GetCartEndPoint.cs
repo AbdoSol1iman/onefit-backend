@@ -1,4 +1,6 @@
 ﻿using MediatR;
+using OneFit.Api.Endpoints.Shared;
+using OneFit.Application.Common.Exceptions;
 using OneFit.Application.Features.Cart.Queries.GetCart;
 using System.Security.Claims;
 
@@ -21,14 +23,25 @@ namespace OneFit.Api.Endpoints.Cart
                     return Results.Unauthorized();
                 }
 
-                var result = await sender.Send(
-                    new GetCartQuery
-                    {
-                        ShopperId = shopperId
-                    },
-                    cancellationToken);
+                try
+                {
+                    var result = await sender.Send(
+                        new GetCartQuery
+                        {
+                            ShopperId = shopperId
+                        },
+                        cancellationToken);
 
-                return Results.Ok(result);
+                    return Results.Ok(result);
+                }
+                catch (NotFoundException ex)
+                {
+                    return EndpointHelpers.FromNotFoundException(ex);
+                }
+                catch (Exception)
+                {
+                    return EndpointHelpers.InternalError();
+                }
             })
             .RequireAuthorization()
             .WithName("GetCart")

@@ -38,12 +38,22 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
                     },
                     statusCode: StatusCodes.Status401Unauthorized);
             }
-            catch (Exception ex)
+            catch (FluentValidation.ValidationException ex)
             {
                 return Results.BadRequest(new
                 {
-                    message = ex.Message
+                    message = ex.Errors.Select(e => e.ErrorMessage).FirstOrDefault()
+                        ?? "Validation failed."
                 });
+            }
+            catch (Exception)
+            {
+                return Results.Json(
+                    new
+                    {
+                        message = "Login failed. Please try again later."
+                    },
+                    statusCode: StatusCodes.Status500InternalServerError);
             }
         }
     }

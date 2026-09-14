@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Identity;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Infrastructure.Constants;
@@ -174,6 +174,19 @@ namespace OneFit.Infrastructure.Services
                         ", ",
                         result.Errors.Select(
                             e => e.Description)));
+            }
+        }
+
+        /// <summary>
+        /// Deletes a user by ID. Used as a compensating action when
+        /// downstream operations fail after user creation.
+        /// </summary>
+        public async Task DeleteUserAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is not null)
+            {
+                await _userManager.DeleteAsync(user);
             }
         }
     }

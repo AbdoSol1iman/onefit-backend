@@ -24,13 +24,17 @@ All JSON is snake_case. `400` = bad input, `401` = login needed, `404` = not fou
 > Send `Authorization: Bearer <access_token>` on everything below marked 🔒.
 
 ## `GET /products` ✅
-Paged list for shop UI.
+Paged list for shop UI + stylist top-N (replaces `POST /catalog/query`, deleted).
 ```
 GET /products?category=shirt&max_price_egp=700&q=linen&in_stock_only=true&sort=price_asc&page=1&page_size=20
+GET /products?category=shirt&max_price_egp=700&style_tags=linen,casual&style_match=rank&limit=3
 ```
 - `q` = name search. `sort` = `price_asc` (default) `| price_desc | newest`.
 - `page >= 1`, `page_size` 1–50 (default 20).
+- `style_tags` = comma-separated, `style_match` = `rank` (default, soft-ranked) `| all | any`.
+- `limit` 1–20: stylist mode, returns `{ items, page: 1, page_size: limit, total }`, ignores `page/page_size`.
 - Response: `{ "items": [{ "product_id": "…", "brand": "…", "name": "…", "category": "shirt", "price_egp": 271.12, "sizes_in_stock": ["S","M"], "image_url": "…" }], "page": 1, "page_size": 20, "total": 132 }`.
+- `400` on bad `sort`/`page`/`page_size`/`style_match`/`limit`.
 
 ## `GET /products/{id}` ✅
 Detail page. Adds `brand_id`, `category`, `style_tags`, full per-size stock:
@@ -38,11 +42,15 @@ Detail page. Adds `brand_id`, `category`, `style_tags`, full per-size stock:
 { "product_id": "…", "brand": "…", "brand_id": "…", "name": "…", "category": "shirt", "price_egp": 271.12, "style_tags": ["formal"], "sizes": [{ "size": "M", "stock_qty": 10 }], "image_url": "…" }
 ```
 
-## `POST /catalog/query` ✅
-Internal slot search (Stylist). `{ "category": "shirt", "max_price_egp": 700, "style_tags": ["linen"], "in_stock_only": true, "limit": 3 }` → `{ "results": […] }` (same item shape as above, `limit` 1–20).
+## `POST /stylist/message` ✅
+Stylist chat: `{ "shopper_id": "s1", "message": "عايز طقم كاجوال لفرح على البحر بميزانية 2500 جنيه" }` → `{ "status": "ready|need_budget|off_topic|llm_fallback|stylist_busy", "reply": "…", "intent": { "occasion": "wedding", "setting": "beach", "style": "casual", "budget_egp": 2500 }, "outfits": […], "plan": { "item_slots": […] } | null }`.
+- Missing budget → `need_budget` + follow-up question, no catalog call. `skip` skips budget.
+- Off-topic → `off_topic` redirect, no catalog call.
+- LLM invalid twice → `llm_fallback`; Gemini quota hit → `stylist_busy`.
+- Uses `GET /products` semantics internally (`limit: 3`, style-ranked).
 
-## `GET /api/v1/catalog/query` ✅
-Same search as above via query params: `?category=shirt&max_price_egp=700&in_stock_only=true&limit=10`.
+## Catalog query endpoints — removed
+`POST /catalog/query` and `GET /api/v1/catalog/query` are deleted. Use `GET /products` with `style_tags` + `limit` instead (same replacement as above).
 
 ## Cart
 

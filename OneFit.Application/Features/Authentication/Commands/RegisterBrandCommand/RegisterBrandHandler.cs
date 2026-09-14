@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Domain.Entities;
 using OneFit.Domain.Entities.Brands;
@@ -42,45 +42,58 @@ namespace OneFit.Application.Features.Authentication.Commands.RegisterBrandComma
                     string.Join(", ", result.Errors));
             }
 
-            // 2. Create Brand
-            var brand = new Brand
+            // Critical fix #12: Wrap the remaining steps in a try/catch
+            // so that if anything fails after user creation, we compensate
+            // by deleting the dangling Identity user.
+            try
             {
-                BrandId = Guid.NewGuid().ToString(),
-                Name = request.BrandName,
-                ApplicationUserId = result.UserId,
-                Status = BrandStatusEnum.PendingVerification,
-                CreatedAt = DateTime.UtcNow
-            };
+                // 2. Create Brand
+                var brand = new Brand
+                {
+                    BrandId = Guid.NewGuid().ToString(),
+                    Name = request.BrandName,
+                    ApplicationUserId = result.UserId,
+                    Status = BrandStatusEnum.PendingVerification,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            _context.Brands.Add(brand);
+                _context.Brands.Add(brand);
 
-            // 3. Upload verification document
-            using var stream =
-                request.VerificationDocument.OpenReadStream();
+                // 3. Upload verification document
+                using var stream =
+                    request.VerificationDocument.OpenReadStream();
 
-            var storageKey = await _fileStorageService.UploadAsync(
-                stream,
-                request.VerificationDocument.FileName,
-                request.VerificationDocument.ContentType,
-                "brands/verification-documents",
-                cancellationToken);
+                var storageKey = await _fileStorageService.UploadAsync(
+                    stream,
+                    request.VerificationDocument.FileName,
+                    request.VerificationDocument.ContentType,
+                    "brands/verification-documents",
+                    cancellationToken);
 
-            // 4. Save document information
-            var document = new BrandDocument
+                // 4. Save document information
+                var document = new BrandDocument
+                {
+                    DocumentId = Guid.NewGuid(),
+                    BrandId = brand.BrandId,
+                    FileName = request.VerificationDocument.FileName,
+                    ContentType = request.VerificationDocument.ContentType,
+                    FileSize = request.VerificationDocument.Length,
+                    StorageKey = storageKey,
+                    UploadedAt = DateTime.UtcNow
+                };
+
+                _context.BrandDocuments.Add(document);
+
+                // 5. Save Brand + Document
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch
             {
-                DocumentId = Guid.NewGuid(),
-                BrandId = brand.BrandId,
-                FileName = request.VerificationDocument.FileName,
-                ContentType = request.VerificationDocument.ContentType,
-                FileSize = request.VerificationDocument.Length,
-                StorageKey = storageKey,
-                UploadedAt = DateTime.UtcNow
-            };
-
-            _context.BrandDocuments.Add(document);
-
-            // 5. Save Brand + Document
-            await _context.SaveChangesAsync(cancellationToken);
+                // Compensate: delete the Identity user that was already created
+                // to avoid a dangling user without a Brand record.
+                await _identityService.DeleteUserAsync(result.UserId);
+                throw;
+            }
         }
     }
 }

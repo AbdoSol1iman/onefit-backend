@@ -9,12 +9,15 @@ using OneFit.Application.Common.Behaviors;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Application.Common.Interfaces.Authentication;
 using OneFit.Application.Common.Interfaces.IRepositories;
-using OneFit.Application.Common.Interfaces.Payments;
 using OneFit.Application.Features.Authentication.Commands.RegisterBrandCommand;
 using OneFit.Application.Features.Authentication.Commands.RegisterUserCommand;
-using OneFit.Application.Features.Catalog;
-using OneFit.Application.Features.Catalog.Queries.QueryCatalog;
+using OneFit.Application.Features.Cart.Commands.AddCartItem;
+using OneFit.Application.Features.Feed;
 using OneFit.Application.Features.Products;
+using OneFit.Application.Features.Stylist;
+using OneFit.Application.Features.Stylist.Gemini;
+using OneFit.Infrastructure.Ai;
+using OneFit.Application.Common.Interfaces.Payments;
 using OneFit.Infrastructure.Authentication;
 using OneFit.Infrastructure.FileStorage;
 using OneFit.Infrastructure.Identity;
@@ -35,21 +38,35 @@ public static class InfrastructureRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Database & DbContext
+        AddPersistence(services, configuration);
+        AddIdentityAndJwt(services, configuration);
+        AddApplicationServices(services);
+        AddIntegrations(services, configuration);
+
+        return services;
+    }
+
+    private static void AddPersistence(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
         services.AddDbContext<OneFitDbContext>(options =>
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection")));
 
         services.AddDataProtection();
+    }
 
-        // Identity
+    private static void AddIdentityAndJwt(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
         services.AddIdentityCore<ApplicationUser>()
             .AddRoles<IdentityRole>()
             .AddSignInManager()
             .AddEntityFrameworkStores<OneFitDbContext>()
             .AddDefaultTokenProviders();
 
-        // JWT Settings
         services.Configure<JwtSettings>(
             configuration.GetSection("Jwt"));
 
@@ -59,10 +76,10 @@ public static class InfrastructureRegistration
             ?? throw new InvalidOperationException(
                 "JWT settings are not configured.");
 
-        services.Configure<StripeSettings>(
-            configuration.GetSection("Stripe"));
+        if (Encoding.UTF8.GetByteCount(jwtSettings.SecretKey) < 32)
+            throw new InvalidOperationException(
+                "Jwt:SecretKey must be at least 256 bits (32 chars). Set the Jwt__SecretKey app setting.");
 
-        // Authentication
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme =
@@ -90,12 +107,16 @@ public static class InfrastructureRegistration
                                 jwtSettings.SecretKey))
                 };
         });
+    }
 
-        // Application Services
-        services.AddScoped<ICatalogQueryService, CatalogQueryService>();
+    private static void AddApplicationServices(IServiceCollection services)
+    {
         services.AddScoped<IProductQueryService, ProductQueryService>();
+        services.AddScoped<IFeedService, FeedService>();
+        services.AddSingleton<IStylistSessionStore, InMemoryStylistSessionStore>();
+        services.AddSingleton<IQuotaMonitor, InMemoryQuotaMonitor>();
+        services.AddScoped<IStylistOrchestrator, StylistOrchestrator>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IWishlistRepository, WishlistRepository>();
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IIdentityService, IdentityService>();
@@ -103,19 +124,11 @@ public static class InfrastructureRegistration
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
-        services.AddScoped<IFileStorageService, CloudinaryFileStorageService>();
-        services.AddScoped<IStripePaymentService, StripePaymentService>();
-        services.AddScoped<IStripeWebhookService, StripeWebhookService>();
 
-        // Cloudinary
-        services.Configure<CloudinarySettings>(
-            configuration.GetSection("CloudinarySettings"));
-
-        // MediatR
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(
-                typeof(QueryCatalogQuery).Assembly);
+                typeof(AddCartItemCommand).Assembly);
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
 
@@ -125,8 +138,21 @@ public static class InfrastructureRegistration
         services.AddScoped<
             IValidator<RegisterUserCommand>,
             RegisterUserCommandValidator>();
+    }
 
-        return services;
+    private static void AddIntegrations(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<GeminiOptions>(configuration.GetSection("Gemini"));
+        services.AddHttpClient<IGeminiOutfitPlanner, GeminiOutfitPlanner>();
+        services.AddScoped<IFileStorageService, CloudinaryFileStorageService>();
+        services.Configure<CloudinarySettings>(
+            configuration.GetSection("CloudinarySettings"));
+        services.Configure<StripeSettings>(
+            configuration.GetSection("Stripe"));
+        services.AddScoped<IStripePaymentService, StripePaymentService>();
+        services.AddScoped<IStripeWebhookService, StripeWebhookService>();
     }
 
     public static async Task SeedIdentityAsync(

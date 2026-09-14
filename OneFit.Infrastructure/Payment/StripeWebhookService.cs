@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Application.Common.Interfaces.Payments;
@@ -93,16 +93,27 @@ namespace OneFit.Infrastructure.Payment
                             x.SubOrderId))
                     .ToListAsync();
 
+            // Critical fix #8: Batch-fetch all required ProductSizes in one query
+            // instead of N+1, and handle insufficient stock gracefully.
+            var productSizeKeys = orderItems
+                .Select(oi => new { oi.ProductId, oi.Size })
+                .ToList();
+
+            var productSizes =
+                await _context.ProductSizes
+                    .Where(ps => orderItems
+                        .Select(oi => oi.ProductId)
+                        .Contains(ps.ProductId))
+                    .ToListAsync();
+
+            var hasStockIssue = false;
+
             foreach (var orderItem in orderItems)
             {
-                var productSize =
-                    await _context.ProductSizes
-                        .FirstOrDefaultAsync(x =>
-                            x.ProductId ==
-                                orderItem.ProductId
-                            &&
-                            x.Size ==
-                                orderItem.Size);
+                var productSize = productSizes
+                    .FirstOrDefault(ps =>
+                        ps.ProductId == orderItem.ProductId
+                        && ps.Size == orderItem.Size);
 
                 if (productSize is null)
                     continue;
@@ -110,16 +121,21 @@ namespace OneFit.Infrastructure.Payment
                 if (productSize.StockQty <
                     orderItem.Qty)
                 {
-                    throw new InvalidOperationException(
-                        $"Insufficient stock for product '{orderItem.ProductId}' in size '{orderItem.Size}'.");
+                    // Critical fix #8: Don't throw — mark for manual review.
+                    // Throwing causes Stripe to retry indefinitely while the
+                    // customer is charged but never fulfilled.
+                    hasStockIssue = true;
+                    continue;
                 }
 
                 productSize.StockQty -=
                     orderItem.Qty;
             }
 
-            // Payment succeeded
-            order.PaymentStatus = "paid";
+            // Payment succeeded — mark accordingly
+            order.PaymentStatus = hasStockIssue
+                ? "paid_requires_attention"
+                : "paid";
 
             // Close and clear the cart
             var cart =
@@ -136,6 +152,7 @@ namespace OneFit.Infrastructure.Payment
                     cart.CartItems);
             }
 
+            // Always return 200 to Stripe (via successful completion)
             await _context.SaveChangesAsync();
         }
     }

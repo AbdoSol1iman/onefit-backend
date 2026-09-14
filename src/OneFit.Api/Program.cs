@@ -1,11 +1,15 @@
 using System.Text.Json;
+using System.Threading.RateLimiting;
+using FluentValidation;
+using Microsoft.AspNetCore.Diagnostics;
 using OneFit.Api.Endpoints;
-using OneFit.Api.EndPoints.AuthEndPoints;
-using OneFit.Api.EndPoints.Cart;
-using OneFit.Api.EndPoints.Checkouts;
-using OneFit.Api.EndPoints.Orders;
-using OneFit.Api.EndPoints.Payments;
-using OneFit.Api.EndPoints.WishList;
+using OneFit.Api.Endpoints.AuthEndPoints;
+using OneFit.Api.Endpoints.Cart;
+using OneFit.Api.Endpoints.Checkouts;
+using OneFit.Api.Endpoints.Orders;
+using OneFit.Api.Endpoints.Payments;
+using OneFit.Api.Endpoints.Feed;
+using OneFit.Api.Endpoints.WishList;
 using OneFit.Application.Features.Chatbot;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
@@ -49,9 +53,133 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddAuthorization();
 
+// --- Rate limiting (Critical fix #9) ---
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Global sliding window: 100 requests per 60 s per IP
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromSeconds(60),
+                SegmentsPerWindow = 4,
+                QueueLimit = 0
+            }));
+
+    // Stricter policy for auth endpoints: 10 per 60 s
+    options.AddPolicy("auth", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromSeconds(60),
+                QueueLimit = 0
+            }));
+
+    // AI stylist: 20 per 60 s
+    options.AddPolicy("stylist", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromSeconds(60),
+                QueueLimit = 0
+            }));
+});
+
 var app = builder.Build();
 
+// --- Global exception handler (Critical fix #10) ---
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+        context.Response.ContentType = "application/json";
+
+        switch (exception)
+        {
+            case ValidationException validationEx:
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        code = "VALIDATION_ERROR",
+                        message = "One or more validation errors occurred.",
+                        details = validationEx.Errors.Select(e => new
+                        {
+                            field = e.PropertyName,
+                            message = e.ErrorMessage
+                        })
+                    }
+                });
+                break;
+
+            case KeyNotFoundException:
+            case OneFit.Application.Common.Exceptions.NotFoundException:
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        code = "NOT_FOUND",
+                        message = exception.Message
+                    }
+                });
+                break;
+
+            case UnauthorizedAccessException:
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        code = "UNAUTHORIZED",
+                        message = "Authentication is required."
+                    }
+                });
+                break;
+
+            case InvalidOperationException when exception.Message.Contains("stock", StringComparison.OrdinalIgnoreCase):
+                context.Response.StatusCode = StatusCodes.Status409Conflict;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        code = "INSUFFICIENT_STOCK",
+                        message = exception.Message
+                    }
+                });
+                break;
+
+            default:
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                // Never leak internal details to clients
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        code = "INTERNAL_ERROR",
+                        message = "An unexpected error occurred. Please try again later."
+                    }
+                });
+                break;
+        }
+    });
+});
+
+// Critical fix #5: Use the restrictive AllowFrontend policy, NOT AllowAll
 app.UseCors("AllowFrontend");
+
+app.UseRateLimiter();
 
 await app.Services.SeedIdentityAsync();
 
@@ -96,10 +224,10 @@ if (args.Contains("--seed"))
     return;
 }
 
-app.MapCatalog();
 app.MapProducts();
+app.MapStylist();
+app.MapFeedEndpoints();
 app.MapChatbot();
-app.MapCatalogEndpoints();
 app.MapWishlistEndpoints();
 app.MapCartEndpoints();
 app.MapGetCartEndPoint();

@@ -18,7 +18,7 @@ namespace OneFit.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
@@ -235,6 +235,12 @@ namespace OneFit.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsLocal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_local");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -602,6 +608,43 @@ namespace OneFit.Infrastructure.Migrations
                     b.ToTable("sub_orders", (string)null);
                 });
 
+            modelBuilder.Entity("OneFit.Domain.Entities.UserInteraction", b =>
+                {
+                    b.Property<string>("InteractionId")
+                        .HasColumnType("character varying")
+                        .HasColumnName("interaction_id");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("InteractionType")
+                        .IsRequired()
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("interaction_type");
+
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasColumnType("character varying")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("ShopperId")
+                        .IsRequired()
+                        .HasColumnType("character varying")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("InteractionId")
+                        .HasName("user_interactions_pkey");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex(new[] { "ShopperId" }, "idx_user_interactions_user_id");
+
+                    b.ToTable("user_interactions", (string)null);
+                });
+
             modelBuilder.Entity("OneFit.Domain.Entities.WishlistItem", b =>
                 {
                     b.Property<string>("WishlistItemId")
@@ -926,6 +969,27 @@ namespace OneFit.Infrastructure.Migrations
                     b.Navigation("Brand");
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("OneFit.Domain.Entities.UserInteraction", b =>
+                {
+                    b.HasOne("OneFit.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_interactions_product");
+
+                    b.HasOne("OneFit.Domain.Entities.Shopper", "Shopper")
+                        .WithMany()
+                        .HasForeignKey("ShopperId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_interactions_shopper");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Shopper");
                 });
 
             modelBuilder.Entity("OneFit.Domain.Entities.WishlistItem", b =>

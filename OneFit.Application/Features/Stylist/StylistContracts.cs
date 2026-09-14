@@ -13,7 +13,8 @@ public sealed record StylistIntent(
 
 public sealed record StylistSession(
     StylistIntent Intent,
-    bool AwaitingBudget = false
+    bool AwaitingBudget = false,
+    List<string>? ShownProductIds = null
 );
 
 public sealed record StylistResult(

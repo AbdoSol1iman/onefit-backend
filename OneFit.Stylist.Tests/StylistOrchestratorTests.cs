@@ -53,7 +53,7 @@ public class StylistOrchestratorTests
         Assert.Equal("casual", res.Intent.Style);
         Assert.Equal(2500, res.Intent.BudgetEgp);
         Assert.Equal(2500, fake.LastQuery!.MaxPriceEgp);
-        Assert.Equal(3, fake.LastQuery.Limit);
+        Assert.Equal(20, fake.LastQuery.Limit);
         Assert.NotEmpty(res.Outfits);
     }
 
@@ -126,5 +126,47 @@ public class StylistOrchestratorTests
 
         Assert.Equal("ready", res.Status);
         Assert.Equal(1, fake.Calls);
+    }
+
+    internal sealed class MultiProductQueryService : IProductQueryService
+    {
+        public Task<PagedResult<ProductSummaryDto>> ListAsync(ProductListQuery query, CancellationToken ct = default)
+        {
+            var items = Enumerable.Range(1, 5)
+                .Select(i => new ProductSummaryDto($"p{i}", "Brand", $"Item {i}", "shirt", 100 + i, ["M"], null))
+                .ToList();
+            return Task.FromResult(new PagedResult<ProductSummaryDto>(items, 1, items.Count, items.Count));
+        }
+
+        public Task<ProductDetailDto?> GetByIdAsync(string productId, CancellationToken ct = default) =>
+            Task.FromResult<ProductDetailDto?>(null);
+    }
+
+    [Fact]
+    public async Task RepeatRequest_RotatesOutfitsInsteadOfRepeating()
+    {
+        var sut = new StylistOrchestrator(new InMemoryStylistSessionStore(), new MultiProductQueryService(), new SkippedPlanner());
+
+        var first = await sut.HandleAsync("r1", "عايز طقم كاجوال بميزانية 2500 جنيه");
+        var second = await sut.HandleAsync("r1", "عايز طقم كاجوال بميزانية 2500 جنيه");
+
+        Assert.Equal("ready", first.Status);
+        Assert.Equal("ready", second.Status);
+        Assert.Equal(["p1", "p2", "p3"], first.Outfits.Select(o => o.ProductId));
+        Assert.DoesNotContain("p1", second.Outfits.Select(o => o.ProductId));
+        Assert.DoesNotContain("p2", second.Outfits.Select(o => o.ProductId));
+        Assert.DoesNotContain("p3", second.Outfits.Select(o => o.ProductId));
+    }
+
+    [Fact]
+    public async Task NewChat_ResetsSession_AndShowsFreshOutfits()
+    {
+        var sut = new StylistOrchestrator(new InMemoryStylistSessionStore(), new MultiProductQueryService(), new SkippedPlanner());
+
+        await sut.HandleAsync("r2", "عايز طقم كاجوال بميزانية 2500 جنيه");
+        var res = await sut.HandleAsync("r2", "عايز طقم كاجوال بميزانية 2500 جنيه", newChat: true);
+
+        Assert.Equal("ready", res.Status);
+        Assert.Equal(["p1", "p2", "p3"], res.Outfits.Select(o => o.ProductId));
     }
 }

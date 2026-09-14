@@ -19,8 +19,8 @@ public sealed class StylistOrchestrator(
         if (StylistIntentExtractor.IsSkip(trimmed) && session.AwaitingBudget)
         {
             var skipped = session.Intent with { BudgetSkipped = true };
-            sessions.Save(shopperId, new StylistSession(skipped, AwaitingBudget: false));
-            return await ResolveAsync(skipped, ct);
+            sessions.Save(shopperId, session with { Intent = skipped, AwaitingBudget = false });
+            return await ResolveAsync(shopperId, skipped, ct);
         }
 
         var fresh = StylistIntentExtractor.Extract(trimmed);
@@ -39,7 +39,7 @@ public sealed class StylistOrchestrator(
 
         if (merged.BudgetEgp is null && !merged.BudgetSkipped)
         {
-            sessions.Save(shopperId, new StylistSession(merged, AwaitingBudget: true));
+            sessions.Save(shopperId, session with { Intent = merged, AwaitingBudget = true });
             return new StylistResult(
                 "need_budget",
                 "What's your budget for this look?",
@@ -48,15 +48,20 @@ public sealed class StylistOrchestrator(
                 CatalogCalled: false);
         }
 
-        sessions.Save(shopperId, new StylistSession(merged, AwaitingBudget: false));
-        return await ResolveAsync(merged, ct);
+        sessions.Save(shopperId, session with { Intent = merged, AwaitingBudget = false });
+        return await ResolveAsync(shopperId, merged, ct);
     }
 
-    private async Task<StylistResult> ResolveAsync(StylistIntent intent, CancellationToken ct) =>
-        await gemini.PlanAsync(intent, ct) switch
+    private async Task<StylistResult> ResolveAsync(string shopperId, StylistIntent intent, CancellationToken ct)
+    {
+        var shown = new HashSet<string>(
+            sessions.GetOrCreate(shopperId).ShownProductIds ?? [],
+            StringComparer.OrdinalIgnoreCase);
+
+        var result = await gemini.PlanAsync(intent, ct) switch
         {
-            PlanSkipped => await AssembleAsync(intent, ct),
-            PlanSuccess s => await AssembleFromPlanAsync(intent, s.Plan, ct),
+            PlanSkipped => await AssembleAsync(intent, shown, ct),
+            PlanSuccess s => await AssembleFromPlanAsync(intent, s.Plan, shown, ct),
             PlanRateLimited => new StylistResult(
                 "stylist_busy",
                 "Our stylist is a bit busy right now — please try again in a moment",
@@ -65,10 +70,21 @@ public sealed class StylistOrchestrator(
                 "llm_fallback",
                 "I'm having trouble putting that look together — try rephrasing your request",
                 intent, [], CatalogCalled: false),
-            _ => await AssembleAsync(intent, ct),
+            _ => await AssembleAsync(intent, shown, ct),
         };
 
-    private async Task<StylistResult> AssembleFromPlanAsync(StylistIntent intent, GeminiOutfitPlan plan, CancellationToken ct)
+        if (result.Outfits.Count > 0)
+        {
+            foreach (var outfit in result.Outfits)
+                shown.Add(outfit.ProductId);
+            var current = sessions.GetOrCreate(shopperId);
+            sessions.Save(shopperId, current with { ShownProductIds = shown.ToList() });
+        }
+
+        return result;
+    }
+
+    private async Task<StylistResult> AssembleFromPlanAsync(StylistIntent intent, GeminiOutfitPlan plan, HashSet<string> shown, CancellationToken ct)
     {
         var outfits = new List<ProductSummaryDto>();
         foreach (var slot in plan.ItemSlots.Take(3))
@@ -83,16 +99,20 @@ public sealed class StylistOrchestrator(
                 PageSize: 20,
                 StyleTags: slot.StyleTags ?? StylistIntentExtractor.ToStyleTags(intent.Style),
                 StyleMatch: "rank",
-                Limit: 1), ct);
-            var first = page.Items.FirstOrDefault();
-            if (first is not null)
-                outfits.Add(first);
+                Limit: 5), ct);
+            var pick = page.Items.FirstOrDefault(i => !shown.Contains(i.ProductId))
+                ?? page.Items.FirstOrDefault();
+            if (pick is not null)
+            {
+                outfits.Add(pick);
+                shown.Add(pick.ProductId);
+            }
         }
 
         return new StylistResult("ready", "Assembling your outfits", intent, outfits, CatalogCalled: true, Plan: plan);
     }
 
-    private async Task<StylistResult> AssembleAsync(StylistIntent intent, CancellationToken ct)
+    private async Task<StylistResult> AssembleAsync(StylistIntent intent, HashSet<string> shown, CancellationToken ct)
     {
         var query = new ProductListQuery(
             Category: null,
@@ -104,14 +124,16 @@ public sealed class StylistOrchestrator(
             PageSize: 20,
             StyleTags: StylistIntentExtractor.ToStyleTags(intent.Style),
             StyleMatch: "rank",
-            Limit: 3);
+            Limit: 20);
 
         var page = await products.ListAsync(query, ct);
+        var fresh = page.Items.Where(i => !shown.Contains(i.ProductId)).Take(3).ToList();
+        var outfits = fresh.Count > 0 ? fresh : page.Items.Take(3).ToList();
         return new StylistResult(
             "ready",
             "Assembling your outfits",
             intent,
-            page.Items,
+            outfits,
             CatalogCalled: true);
     }
 }

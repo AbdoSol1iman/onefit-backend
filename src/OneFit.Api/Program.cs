@@ -7,6 +7,7 @@ using OneFit.Api.Endpoints.Orders;
 using OneFit.Api.Endpoints.Payments;
 using OneFit.Api.Endpoints.Feed;
 using OneFit.Api.Endpoints.WishList;
+using OneFit.Application.Features.Chatbot;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
 using OneFit.Infrastructure.Seeding;
@@ -17,6 +18,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.Configure<ChatbotOptions>(
+    builder.Configuration.GetSection(ChatbotOptions.SectionName));
+builder.Services.AddHttpClient<IChatbotClient, ChatbotClient>((sp, http) =>
+{
+    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ChatbotOptions>>().Value;
+    var baseUrl = (string.IsNullOrWhiteSpace(options.BaseUrl) ? "http://127.0.0.1:8000" : options.BaseUrl).TrimEnd('/');
+    http.BaseAddress = new Uri(baseUrl + "/");
+    http.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds <= 0 ? 30 : options.TimeoutSeconds);
+});
+builder.Services.AddScoped<IChatbotOrchestrator, ChatbotOrchestrator>();
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
     o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
@@ -89,6 +100,7 @@ if (args.Contains("--seed"))
 app.MapProducts();
 app.MapStylist();
 app.MapFeedEndpoints();
+app.MapChatbot();
 app.MapWishlistEndpoints();
 app.MapCartEndpoints();
 app.MapGetCartEndPoint();

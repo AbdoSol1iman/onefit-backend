@@ -65,6 +65,16 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("ApiDocs
     app.MapScalarApiReference();
 }
 
+app.MapGet("/", () => Results.Ok(new
+{
+    service = "OneFit API",
+    status = "running",
+    health = "/health",
+    docs = "/scalar",
+}))
+.WithName("Root")
+.WithSummary("API landing: service info with links to health and docs.");
+
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
     .WithName("Health")
     .WithSummary("Liveness probe for Azure health checks and frontend ping.");

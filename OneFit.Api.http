@@ -24,3 +24,13 @@ GET {{OneFit.Api_HostAddress}}/products/00c306f0-714e-4f84-9e5b-6c29029ce677
 Accept: application/json
 
 ###
+POST {{OneFit.Api_HostAddress}}/chatbot/message
+Content-Type: application/json
+
+{
+  "shopper_id": "s1",
+  "message": "عايز تيشيرت كاجوال",
+  "new_chat": true
+}
+
+###

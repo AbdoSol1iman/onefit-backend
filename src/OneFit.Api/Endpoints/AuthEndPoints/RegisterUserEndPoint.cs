@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using OneFit.Application.Features.Authentication.Commands.RegisterUserCommand;
 
 namespace OneFit.Api.Endpoints.AuthEndPoints
@@ -21,14 +21,23 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
                         message = "Registration successful. You can now login."
                     });
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
+                    // Business logic errors (e.g. email already exists)
                     return Results.BadRequest(new
                     {
                         message = ex.Message
                     });
                 }
+                catch (Exception)
+                {
+                    // Don't leak internal exception details to the client
+                    return Results.Problem(
+                        statusCode: StatusCodes.Status500InternalServerError,
+                        title: "Registration failed. Please try again.");
+                }
             })
+            .RequireRateLimiting("auth")
             .WithName("RegisterUser")
             .WithTags("Authentication");
         }

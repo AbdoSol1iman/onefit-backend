@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -17,5 +17,11 @@ namespace OneFit.Application.Common.Interfaces
             string lastName,
             string email,
             string password);
+
+        /// <summary>
+        /// Deletes a user by ID. Used as a compensating action when
+        /// downstream operations fail after user creation.
+        /// </summary>
+        Task DeleteUserAsync(string userId);
     }
 }

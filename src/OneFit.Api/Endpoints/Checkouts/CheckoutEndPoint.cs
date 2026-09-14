@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using OneFit.Application.Features.Checkout.Commands;
 using System.Security.Claims;
 
@@ -12,6 +12,7 @@ namespace OneFit.Api.Endpoints.Checkouts
             app.MapPost("/api/v1/checkout", async (
                 ClaimsPrincipal user,
                 ISender sender,
+                IConfiguration configuration,
                 CancellationToken cancellationToken) =>
             {
                 var shopperId = user.FindFirstValue("UserId");
@@ -22,7 +23,9 @@ namespace OneFit.Api.Endpoints.Checkouts
                 var result = await sender.Send(
                     new CheckoutCommand
                     {
-                        ShopperId = shopperId
+                        ShopperId = shopperId,
+                        SuccessUrl = configuration["Payment:SuccessUrl"],
+                        CancelUrl = configuration["Payment:CancelUrl"]
                     },
                     cancellationToken);
 

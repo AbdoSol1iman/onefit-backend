@@ -1,17 +1,14 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace OneFit.Api.Endpoints.Cart
 {
     /// <summary>
-    /// Request model for adding an item to the shopping cart
+    /// Request model for adding an item to the shopping cart.
+    /// ShopperId is no longer accepted from the client — it is
+    /// extracted from the JWT token in the endpoint handler.
     /// </summary>
     public record AddCartItemRequest(
-        [property: JsonPropertyName("shopper_id")]
-        [Required(ErrorMessage = "ShopperId is required")]
-        [StringLength(100, MinimumLength = 1)]
-        string ShopperId,
-
         [property: JsonPropertyName("product_id")]
         [Required(ErrorMessage = "ProductId is required")]
         [StringLength(100, MinimumLength = 1)]

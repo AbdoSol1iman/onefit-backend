@@ -8,10 +8,38 @@ public sealed class StylistOrchestrator(
     IProductQueryService products,
     IGeminiOutfitPlanner gemini) : IStylistOrchestrator
 {
+    /// <summary>
+    /// Maximum allowed message length to prevent abuse and prompt injection.
+    /// </summary>
+    private const int MaxMessageLength = 1000;
+
+    /// <summary>
+    /// Characters/patterns stripped from user messages before passing to the AI model.
+    /// Prevents basic prompt injection attacks.
+    /// </summary>
+    private static readonly string[] DangerousPatterns =
+    [
+        "```", "system:", "SYSTEM:", "System:", "[INST]", "[/INST]",
+        "<<SYS>>", "<</SYS>>", "ignore previous", "ignore above",
+        "disregard", "new instructions", "you are now",
+    ];
+
     public async Task<StylistResult> HandleAsync(string shopperId, string message, CancellationToken ct = default)
     {
         var session = sessions.GetOrCreate(shopperId);
-        var trimmed = message.Trim();
+
+        // Critical fix #11: Sanitize and limit user input before AI processing
+        var trimmed = SanitizeMessage(message);
+
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return new StylistResult(
+                "invalid_input",
+                "Please send a valid message.",
+                session.Intent,
+                [],
+                CatalogCalled: false);
+        }
 
         if (StylistIntentExtractor.IsSkip(trimmed) && session.AwaitingBudget)
         {
@@ -47,6 +75,27 @@ public sealed class StylistOrchestrator(
 
         sessions.Save(shopperId, new StylistSession(merged, AwaitingBudget: false));
         return await ResolveAsync(merged, ct);
+    }
+
+    /// <summary>
+    /// Sanitizes user input: trims, enforces length limit, and strips
+    /// known prompt injection patterns.
+    /// </summary>
+    private static string SanitizeMessage(string message)
+    {
+        var trimmed = message.Trim();
+
+        // Enforce max length
+        if (trimmed.Length > MaxMessageLength)
+            trimmed = trimmed[..MaxMessageLength];
+
+        // Strip dangerous prompt injection patterns
+        foreach (var pattern in DangerousPatterns)
+        {
+            trimmed = trimmed.Replace(pattern, string.Empty, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return trimmed.Trim();
     }
 
     private async Task<StylistResult> ResolveAsync(StylistIntent intent, CancellationToken ct) =>

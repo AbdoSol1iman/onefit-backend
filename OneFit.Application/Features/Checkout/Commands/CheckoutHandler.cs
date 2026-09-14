@@ -1,4 +1,5 @@
-﻿using MediatR;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
 using OneFit.Application.Common.Interfaces;
 using OneFit.Application.Common.Interfaces.IRepositories;
 using OneFit.Application.Common.Interfaces.Payments;
@@ -28,6 +29,20 @@ namespace OneFit.Application.Features.Checkout.Commands
             CheckoutCommand request,
             CancellationToken cancellationToken)
         {
+            // Critical fix #13: Idempotency — reject if a pending order already
+            // exists for this shopper (prevents double-submit).
+            var existingPending = await _context.Orders
+                .AnyAsync(
+                    o => o.ShopperId == request.ShopperId
+                         && o.PaymentStatus == "pending",
+                    cancellationToken);
+
+            if (existingPending)
+            {
+                throw new InvalidOperationException(
+                    "You already have a pending checkout. Complete or cancel it before starting a new one.");
+            }
+
             var cart = await _cartRepository
                 .GetOrCreateActiveCartAsync(
                     request.ShopperId,
@@ -46,16 +61,33 @@ namespace OneFit.Application.Features.Checkout.Commands
                 throw new InvalidOperationException(
                     "Cannot checkout an empty cart.");
 
-            // Validate stock without deducting it
+            // Critical fix #6: Atomic stock reservation using database-level
+            // conditional update to prevent overselling under concurrency.
             foreach (var item in cartWithItems.CartItems)
             {
-                if (item.ProductSize.StockQty < item.Qty)
+                // Use ExecuteUpdateAsync to atomically decrement stock
+                // only if sufficient quantity is available.
+                var rowsAffected = await _context.ProductSizes
+                    .Where(ps =>
+                        ps.ProductId == item.ProductId
+                        && ps.Size == item.Size
+                        && ps.StockQty >= item.Qty)
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(
+                                ps => ps.StockQty,
+                                ps => ps.StockQty - item.Qty),
+                        cancellationToken);
+
+                if (rowsAffected == 0)
                 {
                     throw new InvalidOperationException(
                         $"Insufficient stock for product '{item.ProductId}' in size '{item.Size}'.");
                 }
             }
 
+            // Critical fix #7: Create order as "pending" — it will only be
+            // confirmed to "paid" when the Stripe webhook fires.
             var order = new Order
             {
                 OrderId =
@@ -140,14 +172,20 @@ namespace OneFit.Application.Features.Checkout.Commands
                 cancellationToken);
 
             // Create Stripe Checkout Session
+            // Critical fix: Read URLs from configuration instead of hardcoding localhost
+            var successUrl = request.SuccessUrl
+                ?? "https://localhost:5173/payment/success";
+            var cancelUrl = request.CancelUrl
+                ?? "https://localhost:5173/payment/cancel";
+
             var checkoutUrl =
                 await _stripePaymentService
                     .CreateCheckoutSessionAsync(
                         order.OrderId,
                         order.GrandTotalEgp,
                         "egp",
-                        "https://localhost:5173/payment/success",
-                        "https://localhost:5173/payment/cancel");
+                        successUrl,
+                        cancelUrl);
 
             return new CheckoutResultDto
             {

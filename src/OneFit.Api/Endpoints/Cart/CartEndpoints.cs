@@ -1,9 +1,10 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using OneFit.Api.Endpoints.Shared;
 using OneFit.Application.Common.Exceptions;
 using OneFit.Application.Features.Cart.Commands.AddCartItem;
 using OneFit.Application.Features.Cart.Commands.RemoveCartItem;
+using System.Security.Claims;
 
 namespace OneFit.Api.Endpoints.Cart
 {
@@ -23,8 +24,8 @@ namespace OneFit.Api.Endpoints.Cart
         public static void MapCartEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/v1/cart")
-                .WithTags("Cart");
-           
+                .WithTags("Cart")
+                .RequireAuthorization();
 
             // Add item to cart
             group.MapPost("/items", AddCartItemHandler)
@@ -33,6 +34,7 @@ namespace OneFit.Api.Endpoints.Cart
                 .WithDescription("Adds a new item to the cart or increments quantity if item already exists")
                 .Produces(200)
                 .Produces(400)
+                .Produces(401)
                 .Produces(404);
 
             // Remove item from cart
@@ -42,21 +44,28 @@ namespace OneFit.Api.Endpoints.Cart
                 .WithDescription("Removes a specific item from the cart by product ID and size")
                 .Produces(200)
                 .Produces(400)
+                .Produces(401)
                 .Produces(404);
         }
 
         /// <summary>
-        /// Handles adding an item to the cart
+        /// Handles adding an item to the cart.
+        /// Critical fix #4: ShopperId extracted from JWT, not from request body.
         /// </summary>
         private static async Task<IResult> AddCartItemHandler(
             AddCartItemRequest request,
+            ClaimsPrincipal user,
             ISender sender,
             CancellationToken ct)
         {
+            var shopperId = user.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(shopperId))
+                return Results.Unauthorized();
+
             try
             {
                 var command = new AddCartItemCommand(
-                    request.ShopperId,
+                    shopperId,
                     request.ProductId,
                     request.Size,
                     request.Qty);
@@ -75,17 +84,21 @@ namespace OneFit.Api.Endpoints.Cart
         }
 
         /// <summary>
-        /// Handles removing an item from the cart
+        /// Handles removing an item from the cart.
+        /// Critical fix #4: ShopperId extracted from JWT, not from header.
         /// </summary>
         private static async Task<IResult> RemoveCartItemHandler(
             string product_id,
             string size,
-            [FromHeader(Name = "X-Shopper-Id")] string shopperId,
+            ClaimsPrincipal user,
             ISender sender,
             CancellationToken ct)
         {
+            var shopperId = user.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(shopperId))
+                return Results.Unauthorized();
+
             var invalid =
-                EndpointHelpers.Require(shopperId, "X-Shopper-Id", "X-Shopper-Id") ??
                 EndpointHelpers.Require(product_id, "product_id") ??
                 EndpointHelpers.Require(size, "size");
             if (invalid is not null)

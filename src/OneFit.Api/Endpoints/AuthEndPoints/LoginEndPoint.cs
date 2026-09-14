@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OneFit.Application.Common.Interfaces.Authentication;
 using OneFit.Application.Features.Authentication.DTOs;
 
@@ -14,7 +14,8 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
             group.MapPost("/login", LoginHandler)
                 .WithName("Login")
                 .WithTags("Authentication")
-                .WithDescription("Login with email and password");
+                .WithDescription("Login with email and password")
+                .RequireRateLimiting("auth");
 
             return app;
         }
@@ -38,12 +39,15 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
                     },
                     statusCode: StatusCodes.Status401Unauthorized);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Results.BadRequest(new
-                {
-                    message = ex.Message
-                });
+                // Don't leak internal exception details to the client
+                return Results.Json(
+                    new
+                    {
+                        message = "An error occurred during login. Please try again."
+                    },
+                    statusCode: StatusCodes.Status500InternalServerError);
             }
         }
     }

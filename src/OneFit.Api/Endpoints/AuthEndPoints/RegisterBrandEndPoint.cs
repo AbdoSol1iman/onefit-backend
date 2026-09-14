@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using OneFit.Application.Features.Authentication.Commands.RegisterBrandCommand;
 
@@ -22,15 +22,24 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
                         message = "Brand registration submitted successfully. Waiting for admin verification."
                     });
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
+                    // Business logic errors (e.g. email already exists)
                     return Results.BadRequest(new
                     {
                         message = ex.Message
                     });
                 }
+                catch (Exception)
+                {
+                    // Don't leak internal exception details to the client
+                    return Results.Problem(
+                        statusCode: StatusCodes.Status500InternalServerError,
+                        title: "Brand registration failed. Please try again.");
+                }
             })
             .DisableAntiforgery()
+            .RequireRateLimiting("auth")
             .WithName("RegisterBrand")
             .WithTags("Authentication");
         }

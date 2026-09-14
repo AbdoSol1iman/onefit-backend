@@ -1,24 +1,29 @@
 using OneFit.Application.Features.Stylist;
+using System.Security.Claims;
 
 namespace OneFit.Api.Endpoints;
 
 public static class StylistEndpoints
 {
-    public sealed record StylistMessageRequest(string? ShopperId, string? Message);
+    public sealed record StylistMessageRequest(string? Message);
 
     public static void MapStylist(this WebApplication app)
     {
         app.MapPost("/stylist/message", async (
             StylistMessageRequest req,
+            ClaimsPrincipal user,
             IStylistOrchestrator orchestrator,
             CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(req.ShopperId))
-                return Results.BadRequest(new { error = "shopper_id is required" });
+            // Extract ShopperId from JWT — not from request body
+            var shopperId = user.FindFirstValue("UserId");
+            if (string.IsNullOrWhiteSpace(shopperId))
+                return Results.Unauthorized();
+
             if (string.IsNullOrWhiteSpace(req.Message))
                 return Results.BadRequest(new { error = "message is required" });
 
-            var res = await orchestrator.HandleAsync(req.ShopperId.Trim(), req.Message.Trim(), ct);
+            var res = await orchestrator.HandleAsync(shopperId.Trim(), req.Message.Trim(), ct);
             return Results.Ok(new
             {
                 status = res.Status,
@@ -46,6 +51,8 @@ public static class StylistEndpoints
                 },
             });
         })
+        .RequireAuthorization()
+        .RequireRateLimiting("stylist")
         .WithName("PostStylistMessage")
         .WithSummary("Stylist chat: free-text outfit need → intent → gated outfit assembly.");
     }

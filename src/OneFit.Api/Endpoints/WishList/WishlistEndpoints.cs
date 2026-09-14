@@ -1,10 +1,11 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using OneFit.Api.Endpoints.Shared;
 using OneFit.Application.Common.Exceptions;
 using OneFit.Application.Features.WishList.Commands.AddWishlistItem;
 using OneFit.Application.Features.WishList.Commands.RemoveWishlistItem;
 using OneFit.Application.Features.WishList.Queries.GetWishlist;
+using System.Security.Claims;
 
 namespace OneFit.Api.Endpoints.WishList
 {
@@ -25,8 +26,8 @@ namespace OneFit.Api.Endpoints.WishList
         public static void MapWishlistEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/v1/wishlist")
-                .WithTags("Wishlist");
-                
+                .WithTags("Wishlist")
+                .RequireAuthorization();
 
             // Add item to wishlist
             group.MapPost("/items", AddWishlistItemHandler)
@@ -35,6 +36,7 @@ namespace OneFit.Api.Endpoints.WishList
                 .WithDescription("Adds a new item to the wishlist")
                 .Produces(200)
                 .Produces(400)
+                .Produces(401)
                 .Produces(404);
 
             // Remove item from wishlist
@@ -44,29 +46,36 @@ namespace OneFit.Api.Endpoints.WishList
                 .WithDescription("Removes an item from the wishlist")
                 .Produces(200)
                 .Produces(400)
+                .Produces(401)
                 .Produces(404);
 
             // Get wishlist items
             group.MapGet("", GetWishlistHandler)
                 .WithName("GetWishlist")
                 .WithSummary("Get wishlist items")
-                .WithDescription("Retrieves all wishlist items for a specific shopper")
+                .WithDescription("Retrieves all wishlist items for the authenticated shopper")
                 .Produces(200)
-                .Produces(400);
+                .Produces(401);
         }
 
         /// <summary>
-        /// Handles adding an item to the wishlist
+        /// Handles adding an item to the wishlist.
+        /// Critical fix #4: ShopperId from JWT, not request body.
         /// </summary>
         private static async Task<IResult> AddWishlistItemHandler(
             AddWishlistItemRequest request,
+            ClaimsPrincipal user,
             ISender sender,
             CancellationToken ct)
         {
+            var shopperId = user.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(shopperId))
+                return Results.Unauthorized();
+
             try
             {
                 var command = new AddWishlistItemCommand(
-                    request.ShopperId,
+                    shopperId,
                     request.ProductId,
                     request.Size);
 
@@ -87,16 +96,20 @@ namespace OneFit.Api.Endpoints.WishList
         }
 
         /// <summary>
-        /// Handles removing an item from the wishlist
+        /// Handles removing an item from the wishlist.
+        /// Critical fix #4: ShopperId from JWT, not X-Shopper-Id header.
         /// </summary>
         private static async Task<IResult> RemoveWishlistItemHandler(
             string wishlist_item_id,
-            [FromHeader(Name = "X-Shopper-Id")] string shopperId,
+            ClaimsPrincipal user,
             ISender sender,
             CancellationToken ct)
         {
+            var shopperId = user.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(shopperId))
+                return Results.Unauthorized();
+
             var invalid =
-                EndpointHelpers.Require(shopperId, "X-Shopper-Id", "X-Shopper-Id") ??
                 EndpointHelpers.Require(wishlist_item_id, "wishlist_item_id");
             if (invalid is not null)
                 return invalid;
@@ -123,16 +136,17 @@ namespace OneFit.Api.Endpoints.WishList
         }
 
         /// <summary>
-        /// Handles retrieving wishlist items for a shopper
+        /// Handles retrieving wishlist items for the authenticated shopper.
+        /// Critical fix #4: ShopperId from JWT, not query parameter.
         /// </summary>
         private static async Task<IResult> GetWishlistHandler(
-            [FromQuery(Name = "shopper_id")] string shopperId,
+            ClaimsPrincipal user,
             ISender sender,
             CancellationToken ct)
         {
-            var invalid = EndpointHelpers.Require(shopperId, "shopper_id query parameter");
-            if (invalid is not null)
-                return invalid;
+            var shopperId = user.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(shopperId))
+                return Results.Unauthorized();
 
             try
             {

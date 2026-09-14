@@ -1,6 +1,6 @@
-﻿
 
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OneFit.Infrastructure.Constants;
 
@@ -11,6 +11,9 @@ public static class IdentitySeeder
     public static async Task SeedAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
+
+        var configuration =
+            scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
         var roleManager =
             scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
@@ -29,7 +32,13 @@ public static class IdentitySeeder
         }
 
         // Create default admin user
-        var adminEmail = "admin@onefit.com";
+        var adminEmail = configuration["Identity:DefaultAdminEmail"]
+            ?? "admin@onefit.com";
+
+        var adminPassword = configuration["Identity:DefaultAdminPassword"]
+            ?? throw new InvalidOperationException(
+                "Identity:DefaultAdminPassword is not configured. " +
+                "Set it via appsettings, environment variable (Identity__DefaultAdminPassword), or User Secrets.");
 
         var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
@@ -48,7 +57,7 @@ public static class IdentitySeeder
 
             var result = await userManager.CreateAsync(
                 newAdmin,
-                "Admin@123456"
+                adminPassword
             );
 
             if (result.Succeeded)

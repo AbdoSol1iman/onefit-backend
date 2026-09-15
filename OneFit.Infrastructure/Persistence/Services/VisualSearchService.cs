@@ -99,15 +99,30 @@ public sealed class VisualSearchService : IVisualSearchService
         Func<int, int, Task>? onProgress = null,
         CancellationToken ct = default)
     {
-        var productsWithoutEmbeddings = await _db.Products
-            .Where(p => p.ImageEmbedding == null && p.ImageUrl != null)
-            .Select(p => new { p.ProductId, p.ImageUrl })
-            .ToListAsync(ct);
+        await using var conn = _db.Database.GetDbConnection();
+        await conn.OpenAsync(ct);
+
+        await using var countCmd = new NpgsqlCommand(
+            "SELECT COUNT(*) FROM products WHERE image_embedding IS NULL AND image_url IS NOT NULL",
+            (NpgsqlConnection)conn);
+        var total = Convert.ToInt32(await countCmd.ExecuteScalarAsync(ct));
+
+        await using var selectCmd = new NpgsqlCommand(
+            "SELECT product_id, image_url FROM products WHERE image_embedding IS NULL AND image_url IS NOT NULL",
+            (NpgsqlConnection)conn);
+
+        var products = new List<(string ProductId, string ImageUrl)>();
+        await using (var reader = await selectCmd.ExecuteReaderAsync(ct))
+        {
+            while (await reader.ReadAsync(ct))
+            {
+                products.Add((reader.GetString(0), reader.GetString(1)));
+            }
+        }
 
         int processed = 0;
-        int total = productsWithoutEmbeddings.Count;
 
-        foreach (var product in productsWithoutEmbeddings)
+        foreach (var product in products)
         {
             try
             {

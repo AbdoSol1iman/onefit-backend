@@ -156,7 +156,7 @@ public sealed class VisualSearchService : IVisualSearchService
 
     private async Task UpdateProductEmbeddingAsync(string productId, float[] embedding, CancellationToken ct)
     {
-        var sql = "UPDATE products SET image_embedding = @embedding WHERE product_id = @productId";
+        var sql = "UPDATE products SET image_embedding = @embedding::vector WHERE product_id = @productId";
 
         await using var conn = _db.Database.GetDbConnection();
         await conn.OpenAsync(ct);

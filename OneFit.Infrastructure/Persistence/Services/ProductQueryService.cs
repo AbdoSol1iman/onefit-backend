@@ -68,7 +68,8 @@ public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryServi
         """;
 
         await using var dataCmd = new NpgsqlCommand(dataSql, conn);
-        dataCmd.Parameters.AddRange(parameters.ToArray());
+        foreach (var p in parameters)
+            dataCmd.Parameters.Add(new(p.ParameterName, p.Value));
         dataCmd.Parameters.Add(new("offset", offset));
         dataCmd.Parameters.Add(new("limit", query.PageSize));
 

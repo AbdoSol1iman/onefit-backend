@@ -41,10 +41,15 @@ public sealed class EmbeddingBackfillService : BackgroundService
                 var processed = await ProcessBatchAsync(totalProcessed, stoppingToken);
                 totalProcessed += processed;
 
-                if (processed == 0 || totalProcessed >= 400)
+                if (totalProcessed >= 400)
                 {
                     _logger.LogInformation("Backfill complete. {Total} products embedded.", totalProcessed);
                     break;
+                }
+                else if (processed == 0)
+                {
+                    _logger.LogWarning("Batch: 0 products succeeded this round. Waiting before retry...");
+                    await Task.Delay(DelayWhenServiceDownMs, stoppingToken);
                 }
                 else
                 {

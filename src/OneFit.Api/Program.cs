@@ -53,6 +53,8 @@ var app = builder.Build();
 
 app.UseCors("AllowFrontend");
 
+app.UseHttpsRedirection();
+
 await app.Services.SeedIdentityAsync();
 
 app.UseAuthentication();
@@ -67,8 +69,6 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("ApiDocs
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
     .WithName("Health")
     .WithSummary("Liveness probe for Azure health checks and frontend ping.");
-
-app.UseHttpsRedirection();
 
 if (args.Contains("--seed"))
 {

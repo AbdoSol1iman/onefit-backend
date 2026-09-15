@@ -20,6 +20,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(e => e.Category).HasComment("shirt, pants, shoes, accessory, etc.").HasColumnType("character varying").HasColumnName("category");
         builder.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
         builder.Property(e => e.ImageUrl).HasColumnType("character varying").HasColumnName("image_url");
+        builder.Ignore(e => e.ImageEmbedding);
         builder.Property(e => e.Name).HasColumnType("character varying").HasColumnName("name");
         builder.Property(e => e.PriceEgp).HasPrecision(10, 2).HasColumnName("price_egp");
         builder.Property(e => e.StyleTags).HasComment("e.g. linen, casual, chino — used by Catalog-Query Tool").HasColumnType("character varying[]").HasColumnName("style_tags");

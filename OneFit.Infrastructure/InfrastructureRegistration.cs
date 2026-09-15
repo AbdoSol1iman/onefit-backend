@@ -15,7 +15,9 @@ using OneFit.Application.Features.Authentication.Commands.RegisterUserCommand;
 using OneFit.Application.Features.Catalog;
 using OneFit.Application.Features.Catalog.Queries.QueryCatalog;
 using OneFit.Application.Features.Products;
+using OneFit.Application.Features.VisualSearch;
 using OneFit.Infrastructure.Authentication;
+using OneFit.Infrastructure.Clients;
 using OneFit.Infrastructure.FileStorage;
 using OneFit.Infrastructure.Identity;
 using OneFit.Infrastructure.Payment;
@@ -106,6 +108,20 @@ public static class InfrastructureRegistration
         services.AddScoped<IFileStorageService, CloudinaryFileStorageService>();
         services.AddScoped<IStripePaymentService, StripePaymentService>();
         services.AddScoped<IStripeWebhookService, StripeWebhookService>();
+        services.AddScoped<IVisualSearchService, VisualSearchService>();
+
+        services.Configure<EmbeddingServiceOptions>(
+            configuration.GetSection(EmbeddingServiceOptions.SectionName));
+
+        services.AddHttpClient<IEmbeddingClient, EmbeddingClient>((sp, http) =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmbeddingServiceOptions>>().Value;
+            var baseUrl = (string.IsNullOrWhiteSpace(options.BaseUrl)
+                ? "https://onefit-ai-service.wittyocean-789a393e.germanywestcentral.azurecontainerapps.io"
+                : options.BaseUrl).TrimEnd('/');
+            http.BaseAddress = new Uri(baseUrl + "/");
+            http.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds <= 0 ? 60 : options.TimeoutSeconds);
+        });
 
         // Cloudinary
         services.Configure<CloudinarySettings>(

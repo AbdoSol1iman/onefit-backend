@@ -22,6 +22,11 @@ public partial class Product
     public string? ImageUrl { get; set; }
 
     /// <summary>
+    /// 512-D L2-normalized image embedding for visual similarity search (pgvector).
+    /// </summary>
+    public float[]? ImageEmbedding { get; set; }
+
+    /// <summary>
     /// e.g. linen, casual, chino — used by Catalog-Query Tool
     /// </summary>
     public List<string>? StyleTags { get; set; }

@@ -109,5 +109,6 @@ app.MapLoginEndPoint();
 app.MapRegisterBrandEndPoint();
 app.MapRegisterUserEndPoint();
 app.MapStripeWebhookEndpoint();
+app.MapVisualSearch();
 
 app.Run();

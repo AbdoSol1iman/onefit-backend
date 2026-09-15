@@ -1,0 +1,161 @@
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using NpgsqlTypes;
+using OneFit.Application.Features.Products;
+using OneFit.Application.Features.VisualSearch;
+using OneFit.Infrastructure.Persistence.Data;
+
+namespace OneFit.Infrastructure.Persistence.Services;
+
+public sealed class VisualSearchService : IVisualSearchService
+{
+    private readonly OneFitDbContext _db;
+    private readonly IEmbeddingClient _embeddingClient;
+
+    public VisualSearchService(OneFitDbContext db, IEmbeddingClient embeddingClient)
+    {
+        _db = db;
+        _embeddingClient = embeddingClient;
+    }
+
+    public async Task<VisualSearchResponse> SearchAsync(
+        float[] queryEmbedding,
+        string? category = null,
+        decimal? maxPriceEgp = null,
+        bool? inStockOnly = null,
+        int topN = 10,
+        CancellationToken ct = default)
+    {
+        var sql = new StringBuilder();
+        sql.AppendLine("""
+            SELECT p.product_id, b.name AS brand, p.name, p.category, p.price_egp, p.image_url,
+                   1 - (p.image_embedding <=> @embedding) AS similarity
+            FROM products p
+            JOIN brands b ON b.brand_id = p.brand_id
+            WHERE p.image_embedding IS NOT NULL
+        """);
+
+        var parameters = new List<NpgsqlParameter>
+        {
+            new("embedding", queryEmbedding) { NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Real }
+        };
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            sql.AppendLine("AND p.category = @category");
+            parameters.Add(new("category", category.Trim().ToLower()));
+        }
+
+        if (maxPriceEgp.HasValue)
+        {
+            sql.AppendLine("AND p.price_egp <= @maxPrice");
+            parameters.Add(new("maxPrice", maxPriceEgp.Value));
+        }
+
+        if (inStockOnly == true)
+        {
+            sql.AppendLine("AND EXISTS (SELECT 1 FROM product_sizes ps WHERE ps.product_id = p.product_id AND ps.stock_qty > 0)");
+        }
+
+        sql.AppendLine("ORDER BY p.image_embedding <=> @embedding");
+        sql.AppendLine("LIMIT @topN");
+        parameters.Add(new("topN", topN));
+
+        var results = new List<VisualSearchResult>();
+
+        await using var conn = _db.Database.GetDbConnection();
+        await conn.OpenAsync(ct);
+
+        await using var cmd = new NpgsqlCommand(sql.ToString(), (NpgsqlConnection)conn);
+        cmd.Parameters.AddRange(parameters.ToArray());
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+        while (await reader.ReadAsync(ct))
+        {
+            var productId = reader.GetString(0);
+            var brand = reader.GetString(1);
+            var name = reader.GetString(2);
+            var productCategory = reader.GetString(3);
+            var priceEgp = reader.GetDecimal(4);
+            var imageUrl = reader.IsDBNull(5) ? null : reader.GetString(5);
+            var similarity = reader.GetDouble(6);
+
+            var sizes = await _db.ProductSizes
+                .Where(s => s.ProductId == productId && s.StockQty > 0)
+                .OrderBy(s => s.Size)
+                .Select(s => s.Size)
+                .ToListAsync(ct);
+
+            var productDto = new ProductSummaryDto(productId, brand, name, productCategory, priceEgp, sizes, imageUrl);
+            results.Add(new VisualSearchResult(productDto, similarity));
+        }
+
+        return new VisualSearchResponse(results, results.Count);
+    }
+
+    public async Task<int> BackfillEmbeddingsAsync(
+        Func<int, int, Task>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        var productsWithoutEmbeddings = await _db.Products
+            .Where(p => p.ImageEmbedding == null && p.ImageUrl != null)
+            .Select(p => new { p.ProductId, p.ImageUrl })
+            .ToListAsync(ct);
+
+        int processed = 0;
+        int total = productsWithoutEmbeddings.Count;
+
+        foreach (var product in productsWithoutEmbeddings)
+        {
+            try
+            {
+                var imageBytes = await DownloadImageAsBytesAsync(product.ImageUrl!, ct);
+                if (imageBytes is null)
+                    continue;
+
+                var base64 = Convert.ToBase64String(imageBytes);
+                var embedding = await _embeddingClient.GenerateEmbeddingAsync(base64, ct);
+
+                if (embedding is { Length: 512 })
+                {
+                    await UpdateProductEmbeddingAsync(product.ProductId, embedding, ct);
+                }
+
+                processed++;
+
+                if (onProgress is not null)
+                    await onProgress(processed, total);
+
+                await Task.Delay(100, ct);
+            }
+            catch
+            {
+                // Skip products that fail embedding generation
+            }
+        }
+
+        return processed;
+    }
+
+    private async Task UpdateProductEmbeddingAsync(string productId, float[] embedding, CancellationToken ct)
+    {
+        var sql = "UPDATE products SET image_embedding = @embedding WHERE product_id = @productId";
+
+        await using var conn = _db.Database.GetDbConnection();
+        await conn.OpenAsync(ct);
+
+        await using var cmd = new NpgsqlCommand(sql, (NpgsqlConnection)conn);
+        cmd.Parameters.AddWithValue("productId", productId);
+        cmd.Parameters.AddWithValue("embedding", embedding);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    private static async Task<byte[]?> DownloadImageAsBytesAsync(string imageUrl, CancellationToken ct)
+    {
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        return await httpClient.GetByteArrayAsync(imageUrl, ct);
+    }
+}

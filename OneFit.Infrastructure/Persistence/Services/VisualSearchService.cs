@@ -32,7 +32,12 @@ public sealed class VisualSearchService : IVisualSearchService
         var sql = new StringBuilder();
         sql.AppendLine("""
             SELECT p.product_id, b.name AS brand, p.name, p.category, p.price_egp, p.image_url,
-                   1 - (p.image_embedding <=> @embedding::vector) AS similarity
+                   1 - (p.image_embedding <=> @embedding::vector) AS similarity,
+                   ARRAY_TO_STRING(ARRAY(
+                       SELECT ps.size FROM product_sizes ps
+                       WHERE ps.product_id = p.product_id AND ps.stock_qty > 0
+                       ORDER BY ps.size
+                   ), ',') AS sizes
             FROM products p
             JOIN brands b ON b.brand_id = p.brand_id
             WHERE p.image_embedding IS NOT NULL
@@ -82,16 +87,10 @@ public sealed class VisualSearchService : IVisualSearchService
             var priceEgp = reader.GetDecimal(4);
             var imageUrl = reader.IsDBNull(5) ? null : reader.GetString(5);
             var similarity = reader.GetDouble(6);
-
-            var sizesSql = "SELECT size FROM product_sizes WHERE product_id = @pid AND stock_qty > 0 ORDER BY size";
-            await using var sizesCmd = new NpgsqlCommand(sizesSql, conn);
-            sizesCmd.Parameters.AddWithValue("pid", productId);
-            var sizes = new List<string>();
-            await using (var sizesReader = await sizesCmd.ExecuteReaderAsync(ct))
-            {
-                while (await sizesReader.ReadAsync(ct))
-                    sizes.Add(sizesReader.GetString(0));
-            }
+            var sizesStr = reader.IsDBNull(7) ? "" : reader.GetString(7);
+            var sizes = string.IsNullOrEmpty(sizesStr)
+                ? new List<string>()
+                : sizesStr.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
 
             var productDto = new ProductSummaryDto(productId, brand, name, productCategory, priceEgp, sizes, imageUrl);
             results.Add(new VisualSearchResult(productDto, similarity));

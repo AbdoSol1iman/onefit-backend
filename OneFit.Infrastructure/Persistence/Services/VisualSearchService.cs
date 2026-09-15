@@ -163,7 +163,7 @@ public sealed class VisualSearchService : IVisualSearchService
 
         await using var cmd = new NpgsqlCommand(sql, (NpgsqlConnection)conn);
         cmd.Parameters.AddWithValue("productId", productId);
-        cmd.Parameters.AddWithValue("embedding", embedding);
+        cmd.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Array | NpgsqlDbType.Real) { Value = embedding });
 
         await cmd.ExecuteNonQueryAsync(ct);
     }

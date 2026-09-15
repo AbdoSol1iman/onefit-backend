@@ -123,11 +123,9 @@ public sealed class EmbeddingBackfillService : BackgroundService
 
                 if (embedding is { Length: 512 })
                 {
-                    await using var updateConn = db.Database.GetDbConnection();
-                    await updateConn.OpenAsync(ct);
                     await using var cmd = new NpgsqlCommand(
                         "UPDATE products SET image_embedding = @embedding::vector WHERE product_id = @productId",
-                        (NpgsqlConnection)updateConn);
+                        (NpgsqlConnection)conn);
                     cmd.Parameters.AddWithValue("productId", product.ProductId);
                     cmd.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Array | NpgsqlDbType.Real) { Value = embedding });
                     await cmd.ExecuteNonQueryAsync(ct);

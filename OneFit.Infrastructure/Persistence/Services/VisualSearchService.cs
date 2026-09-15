@@ -83,11 +83,15 @@ public sealed class VisualSearchService : IVisualSearchService
             var imageUrl = reader.IsDBNull(5) ? null : reader.GetString(5);
             var similarity = reader.GetDouble(6);
 
-            var sizes = await _db.ProductSizes
-                .Where(s => s.ProductId == productId && s.StockQty > 0)
-                .OrderBy(s => s.Size)
-                .Select(s => s.Size)
-                .ToListAsync(ct);
+            var sizesSql = "SELECT size FROM product_sizes WHERE product_id = @pid AND stock_qty > 0 ORDER BY size";
+            await using var sizesCmd = new NpgsqlCommand(sizesSql, conn);
+            sizesCmd.Parameters.AddWithValue("pid", productId);
+            var sizes = new List<string>();
+            await using (var sizesReader = await sizesCmd.ExecuteReaderAsync(ct))
+            {
+                while (await sizesReader.ReadAsync(ct))
+                    sizes.Add(sizesReader.GetString(0));
+            }
 
             var productDto = new ProductSummaryDto(productId, brand, name, productCategory, priceEgp, sizes, imageUrl);
             results.Add(new VisualSearchResult(productDto, similarity));

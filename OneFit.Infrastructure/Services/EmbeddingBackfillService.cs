@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using NpgsqlTypes;
 using OneFit.Application.Features.VisualSearch;
 using OneFit.Infrastructure.Persistence.Data;
 
@@ -125,10 +126,10 @@ public sealed class EmbeddingBackfillService : BackgroundService
                     await using var updateConn = db.Database.GetDbConnection();
                     await updateConn.OpenAsync(ct);
                     await using var cmd = new NpgsqlCommand(
-                        "UPDATE products SET image_embedding = @embedding WHERE product_id = @productId",
+                        "UPDATE products SET image_embedding = @embedding::vector WHERE product_id = @productId",
                         (NpgsqlConnection)updateConn);
                     cmd.Parameters.AddWithValue("productId", product.ProductId);
-                    cmd.Parameters.AddWithValue("embedding", embedding);
+                    cmd.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Array | NpgsqlDbType.Real) { Value = embedding });
                     await cmd.ExecuteNonQueryAsync(ct);
                     processed++;
                 }
@@ -142,7 +143,7 @@ public sealed class EmbeddingBackfillService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("Failed to embed product {ProductId}: {Error}", product.ProductId, ex.Message);
+                _logger.LogWarning("Failed to embed product {ProductId}: {Error}", product.ProductId, ex.Message);
                 failed++;
             }
         }

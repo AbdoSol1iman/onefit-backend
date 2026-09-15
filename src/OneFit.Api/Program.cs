@@ -1,11 +1,11 @@
 using System.Text.Json;
 using OneFit.Api.Endpoints;
-using OneFit.Api.EndPoints.AuthEndPoints;
-using OneFit.Api.EndPoints.Cart;
-using OneFit.Api.EndPoints.Checkouts;
-using OneFit.Api.EndPoints.Orders;
-using OneFit.Api.EndPoints.Payments;
-using OneFit.Api.EndPoints.WishList;
+using OneFit.Api.Endpoints.AuthEndPoints;
+using OneFit.Api.Endpoints.Cart;
+using OneFit.Api.Endpoints.Checkouts;
+using OneFit.Api.Endpoints.Orders;
+using OneFit.Api.Endpoints.Payments;
+using OneFit.Api.Endpoints.WishList;
 using OneFit.Application.Features.Chatbot;
 using OneFit.Infrastructure;
 using OneFit.Infrastructure.Persistence.Data;
@@ -96,10 +96,8 @@ if (args.Contains("--seed"))
     return;
 }
 
-app.MapCatalog();
 app.MapProducts();
 app.MapChatbot();
-app.MapCatalogEndpoints();
 app.MapWishlistEndpoints();
 app.MapCartEndpoints();
 app.MapGetCartEndPoint();

@@ -94,7 +94,6 @@ public static class InfrastructureRegistration
         });
 
         // Application Services
-        services.AddScoped<ICatalogQueryService, CatalogQueryService>();
         services.AddScoped<IProductQueryService, ProductQueryService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProductRepository, ProductRepository>();

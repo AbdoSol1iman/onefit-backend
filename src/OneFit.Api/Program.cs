@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using OneFit.Api.Endpoints;
 using OneFit.Api.Endpoints.AuthEndPoints;
 using OneFit.Api.Endpoints.Cart;
@@ -54,6 +55,12 @@ var app = builder.Build();
 app.UseCors("AllowFrontend");
 
 app.UseHttpsRedirection();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<OneFitDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 await app.Services.SeedIdentityAsync();
 

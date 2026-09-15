@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 using OneFit.Application.Features.Authentication.Commands.RegisterBrandCommand;
 
 namespace OneFit.Api.Endpoints.AuthEndPoints
@@ -28,6 +29,13 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
                     {
                         message = ex.Errors.Select(e => e.ErrorMessage).FirstOrDefault()
                             ?? "Validation failed."
+                    });
+                }
+                catch (PostgresException ex) when (ex.SqlState == "23505")
+                {
+                    return Results.Conflict(new
+                    {
+                        message = "An account with this email already exists."
                     });
                 }
                 catch (Exception)

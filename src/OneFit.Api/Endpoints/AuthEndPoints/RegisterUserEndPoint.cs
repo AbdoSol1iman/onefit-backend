@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Npgsql;
 using OneFit.Application.Features.Authentication.Commands.RegisterUserCommand;
 
 namespace OneFit.Api.Endpoints.AuthEndPoints
@@ -27,6 +28,13 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
                     {
                         message = ex.Errors.Select(e => e.ErrorMessage).FirstOrDefault()
                             ?? "Validation failed."
+                    });
+                }
+                catch (PostgresException ex) when (ex.SqlState == "23505")
+                {
+                    return Results.Conflict(new
+                    {
+                        message = "An account with this email already exists."
                     });
                 }
                 catch (Exception)

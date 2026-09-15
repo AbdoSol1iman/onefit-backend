@@ -1,0 +1,172 @@
+﻿using OneFit.Application.Features.Products;
+using OneFit.Application.Features.Stylist;
+using OneFit.Application.Features.Stylist.Gemini;
+
+namespace OneFit.Stylist.Tests;
+
+internal sealed class SkippedPlanner : IGeminiOutfitPlanner
+{
+    public Task<PlannerOutcome> PlanAsync(StylistIntent intent, CancellationToken ct = default) =>
+        Task.FromResult<PlannerOutcome>(new PlanSkipped());
+}
+
+internal sealed class FakeProductQueryService : IProductQueryService
+{
+    public int Calls { get; private set; }
+    public ProductListQuery? LastQuery { get; private set; }
+
+    public Task<PagedResult<ProductSummaryDto>> ListAsync(ProductListQuery query, CancellationToken ct = default)
+    {
+        Calls++;
+        LastQuery = query;
+        var items = new List<ProductSummaryDto>
+        {
+            new("p1", "Brand", "Shirt", "shirt", 500, ["M"], null),
+        };
+        return Task.FromResult(new PagedResult<ProductSummaryDto>(items, 1, query.Limit ?? query.PageSize, 1));
+    }
+
+    public Task<ProductDetailDto?> GetByIdAsync(string productId, CancellationToken ct = default) =>
+        Task.FromResult<ProductDetailDto?>(null);
+}
+
+public class StylistOrchestratorTests
+{
+    private static StylistOrchestrator Build(out FakeProductQueryService fake)
+    {
+        fake = new FakeProductQueryService();
+        return new StylistOrchestrator(new InMemoryStylistSessionStore(), fake, new SkippedPlanner());
+    }
+
+    [Fact]
+    public async Task WellFormedRequest_ExtractsIntent_AndCallsCatalog()
+    {
+        var sut = Build(out var fake);
+
+        var res = await sut.HandleAsync("s1", "عايز طقم كاجوال لفرح على البحر بميزانية 2500 جنيه");
+
+        Assert.Equal("ready", res.Status);
+        Assert.True(res.CatalogCalled);
+        Assert.Equal(1, fake.Calls);
+        Assert.Equal("wedding", res.Intent.Occasion);
+        Assert.Equal("beach", res.Intent.Setting);
+        Assert.Equal("casual", res.Intent.Style);
+        Assert.Equal(2500, res.Intent.BudgetEgp);
+        Assert.Equal(2500, fake.LastQuery!.MaxPriceEgp);
+        Assert.Equal(20, fake.LastQuery.Limit);
+        Assert.NotEmpty(res.Outfits);
+    }
+
+    [Fact]
+    public async Task MissingBudget_AsksFollowUp_AndWithholdsCatalog()
+    {
+        var sut = Build(out var fake);
+
+        var res = await sut.HandleAsync("s2", "عايز طقم كاجوال لفرح على البحر");
+
+        Assert.Equal("need_budget", res.Status);
+        Assert.False(res.CatalogCalled);
+        Assert.Equal(0, fake.Calls);
+        Assert.Contains("budget", res.Reply.ToLowerInvariant());
+    }
+
+    [Fact]
+    public async Task MissingBudgetThenProvided_AssemblesOutfit()
+    {
+        var store = new InMemoryStylistSessionStore();
+        var fake = new FakeProductQueryService();
+        var sut = new StylistOrchestrator(store, fake, new SkippedPlanner());
+
+        await sut.HandleAsync("s3", "عايز طقم كاجوال لفرح على البحر");
+        var res = await sut.HandleAsync("s3", "2500 جنيه");
+
+        Assert.Equal("ready", res.Status);
+        Assert.True(res.CatalogCalled);
+        Assert.Equal("casual", res.Intent.Style);
+        Assert.Equal(2500, res.Intent.BudgetEgp);
+    }
+
+    [Fact]
+    public async Task MissingBudgetThenSkipped_AssemblesWithoutBudget()
+    {
+        var store = new InMemoryStylistSessionStore();
+        var fake = new FakeProductQueryService();
+        var sut = new StylistOrchestrator(store, fake, new SkippedPlanner());
+
+        await sut.HandleAsync("s4", "عايز طقم كاجوال لفرح على البحر");
+        var res = await sut.HandleAsync("s4", "skip");
+
+        Assert.Equal("ready", res.Status);
+        Assert.True(res.CatalogCalled);
+        Assert.Null(fake.LastQuery!.MaxPriceEgp);
+    }
+
+    [Fact]
+    public async Task OffTopic_Redirects_AndSkipsCatalog()
+    {
+        var sut = Build(out var fake);
+
+        var res = await sut.HandleAsync("s5", "what's the weather today");
+
+        Assert.Equal("off_topic", res.Status);
+        Assert.False(res.CatalogCalled);
+        Assert.Equal(0, fake.Calls);
+        Assert.Contains("outfit", res.Reply.ToLowerInvariant());
+    }
+
+    [Fact]
+    public async Task Sessions_ArePerShopper()
+    {
+        var store = new InMemoryStylistSessionStore();
+        var fake = new FakeProductQueryService();
+        var sut = new StylistOrchestrator(store, fake, new SkippedPlanner());
+
+        await sut.HandleAsync("a", "عايز طقم كاجوال لفرح على البحر");
+        var res = await sut.HandleAsync("b", "عايز طقم كاجوال لفرح على البحر بميزانية 2500 جنيه");
+
+        Assert.Equal("ready", res.Status);
+        Assert.Equal(1, fake.Calls);
+    }
+
+    internal sealed class MultiProductQueryService : IProductQueryService
+    {
+        public Task<PagedResult<ProductSummaryDto>> ListAsync(ProductListQuery query, CancellationToken ct = default)
+        {
+            var items = Enumerable.Range(1, 5)
+                .Select(i => new ProductSummaryDto($"p{i}", "Brand", $"Item {i}", "shirt", 100 + i, ["M"], null))
+                .ToList();
+            return Task.FromResult(new PagedResult<ProductSummaryDto>(items, 1, items.Count, items.Count));
+        }
+
+        public Task<ProductDetailDto?> GetByIdAsync(string productId, CancellationToken ct = default) =>
+            Task.FromResult<ProductDetailDto?>(null);
+    }
+
+    [Fact]
+    public async Task RepeatRequest_RotatesOutfitsInsteadOfRepeating()
+    {
+        var sut = new StylistOrchestrator(new InMemoryStylistSessionStore(), new MultiProductQueryService(), new SkippedPlanner());
+
+        var first = await sut.HandleAsync("r1", "عايز طقم كاجوال بميزانية 2500 جنيه");
+        var second = await sut.HandleAsync("r1", "عايز طقم كاجوال بميزانية 2500 جنيه");
+
+        Assert.Equal("ready", first.Status);
+        Assert.Equal("ready", second.Status);
+        Assert.Equal(["p1", "p2", "p3"], first.Outfits.Select(o => o.ProductId));
+        Assert.DoesNotContain("p1", second.Outfits.Select(o => o.ProductId));
+        Assert.DoesNotContain("p2", second.Outfits.Select(o => o.ProductId));
+        Assert.DoesNotContain("p3", second.Outfits.Select(o => o.ProductId));
+    }
+
+    [Fact]
+    public async Task NewChat_ResetsSession_AndShowsFreshOutfits()
+    {
+        var sut = new StylistOrchestrator(new InMemoryStylistSessionStore(), new MultiProductQueryService(), new SkippedPlanner());
+
+        await sut.HandleAsync("r2", "عايز طقم كاجوال بميزانية 2500 جنيه");
+        var res = await sut.HandleAsync("r2", "عايز طقم كاجوال بميزانية 2500 جنيه", newChat: true);
+
+        Assert.Equal("ready", res.Status);
+        Assert.Equal(["p1", "p2", "p3"], res.Outfits.Select(o => o.ProductId));
+    }
+}

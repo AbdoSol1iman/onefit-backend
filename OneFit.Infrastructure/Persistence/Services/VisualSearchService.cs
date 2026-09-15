@@ -30,7 +30,7 @@ public sealed class VisualSearchService : IVisualSearchService
         var sql = new StringBuilder();
         sql.AppendLine("""
             SELECT p.product_id, b.name AS brand, p.name, p.category, p.price_egp, p.image_url,
-                   1 - (p.image_embedding <=> @embedding) AS similarity
+                   1 - (p.image_embedding <=> @embedding::vector) AS similarity
             FROM products p
             JOIN brands b ON b.brand_id = p.brand_id
             WHERE p.image_embedding IS NOT NULL
@@ -58,7 +58,7 @@ public sealed class VisualSearchService : IVisualSearchService
             sql.AppendLine("AND EXISTS (SELECT 1 FROM product_sizes ps WHERE ps.product_id = p.product_id AND ps.stock_qty > 0)");
         }
 
-        sql.AppendLine("ORDER BY p.image_embedding <=> @embedding");
+        sql.AppendLine("ORDER BY p.image_embedding <=> @embedding::vector");
         sql.AppendLine("LIMIT @topN");
         parameters.Add(new("topN", topN));
 

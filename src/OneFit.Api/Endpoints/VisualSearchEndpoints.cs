@@ -14,22 +14,29 @@ public static class VisualSearchEndpoints
             IVisualSearchService visualSearchService,
             CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(request.ImageBase64))
-                return Results.BadRequest(new { error = new { code = "INVALID_REQUEST", message = "image_base64 is required." } });
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.ImageBase64))
+                    return Results.BadRequest(new { error = new { code = "INVALID_REQUEST", message = "image_base64 is required." } });
 
-            var embedding = await embeddingClient.GenerateEmbeddingAsync(request.ImageBase64, ct);
-            if (embedding is null)
-                return Results.BadRequest(new { error = new { code = "EMBEDDING_FAILED", message = "Failed to generate embedding from the provided image." } });
+                var embedding = await embeddingClient.GenerateEmbeddingAsync(request.ImageBase64, ct);
+                if (embedding is null)
+                    return Results.BadRequest(new { error = new { code = "EMBEDDING_FAILED", message = "Failed to generate embedding from the provided image." } });
 
-            var results = await visualSearchService.SearchAsync(
-                embedding,
-                request.Category,
-                request.MaxPriceEgp,
-                request.InStockOnly,
-                topN: 10,
-                ct);
+                var results = await visualSearchService.SearchAsync(
+                    embedding,
+                    request.Category,
+                    request.MaxPriceEgp,
+                    request.InStockOnly,
+                    topN: 10,
+                    ct);
 
-            return Results.Ok(results);
+                return Results.Ok(results);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = new { code = "VISUAL_SEARCH_FAILED", message = ex.Message } }, statusCode: 500);
+            }
         })
         .WithName("VisualSearch")
         .WithSummary("Find visually similar products by uploading an image. Returns the top 10 most similar products ranked by cosine similarity.");
@@ -38,23 +45,30 @@ public static class VisualSearchEndpoints
             IVisualSearchService visualSearchService,
             CancellationToken ct) =>
         {
-            int processed = 0;
-            int total = 0;
-
-            var result = await visualSearchService.BackfillEmbeddingsAsync(
-                async (done, t) =>
-                {
-                    processed = done;
-                    total = t;
-                },
-                ct);
-
-            return Results.Ok(new
+            try
             {
-                processed,
-                total,
-                message = $"Embedding backfill completed. {processed}/{total} products processed."
-            });
+                int processed = 0;
+                int total = 0;
+
+                var result = await visualSearchService.BackfillEmbeddingsAsync(
+                    async (done, t) =>
+                    {
+                        processed = done;
+                        total = t;
+                    },
+                    ct);
+
+                return Results.Ok(new
+                {
+                    processed,
+                    total,
+                    message = $"Embedding backfill completed. {processed}/{total} products processed."
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = new { code = "BACKFILL_FAILED", message = ex.Message } }, statusCode: 500);
+            }
         })
         .WithName("BackfillEmbeddings")
         .WithSummary("One-time backfill: generate embeddings for all products that don't have one yet.");

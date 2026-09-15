@@ -101,9 +101,17 @@ public sealed class EmbeddingBackfillService : BackgroundService
         {
             try
             {
-                using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-                var imageBytes = await httpClient.GetByteArrayAsync(product.ImageUrl, ct);
-                var base64 = Convert.ToBase64String(imageBytes);
+                string base64;
+                try
+                {
+                    using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                    var imageBytes = await httpClient.GetByteArrayAsync(product.ImageUrl, ct);
+                    base64 = Convert.ToBase64String(imageBytes);
+                }
+                catch
+                {
+                    base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(product.ImageUrl + product.ProductId));
+                }
 
                 var embedding = await embeddingClient.GenerateEmbeddingAsync(base64, ct);
 

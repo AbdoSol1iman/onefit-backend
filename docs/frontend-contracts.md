@@ -70,10 +70,23 @@ Same search as above via query params: `?category=shirt&max_price_egp=700&in_sto
 
 **`POST /api/v1/payments/webhook`** — Stripe server-to-server callback (raw body + `Stripe-Signature` header). Not called by the frontend.
 
+## Visual Search ✅
+
+**`POST /visual-search`** — find visually similar products by image.
+```
+{ "image_base64": "<BASE64_STRING>", "category": "shirt"?, "max_price_egp": 500?, "in_stock_only": true? }
+```
+- All body fields except `image_base64` are optional filters.
+- Response: `{ "results": [{ "product": { "product_id": "…", "brand": "…", "name": "…", "category": "…", "price_egp": 271.12, "sizes_in_stock": ["S","M"], "image_url": "…" }, "similarity": 0.92 }], "total": 10 }`.
+- Returns up to 10 results ranked by cosine similarity (1.0 = identical).
+- `400` if `image_base64` is missing or embedding generation fails.
+
+**`POST /visual-search/backfill-embeddings`** — one-time admin endpoint to generate embeddings for all products missing one.
+- Response: `{ "processed": 120, "total": 132, "message": "…" }`.
+
 ## Not live yet
 | Endpoint | When |
 |---|---|
-| `POST /visual-search` | Embedding deferred — contract TBD |
 | Alerts (`GET /alerts`, `POST /alerts/{id}/read`) | Day-4 |
 
 Stay on mocks for these until they flip to ✅. No shape changes after Day-4 freeze.

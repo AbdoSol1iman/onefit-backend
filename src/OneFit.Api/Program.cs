@@ -59,7 +59,29 @@ app.UseHttpsRedirection();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<OneFitDbContext>();
-    await db.Database.MigrateAsync();
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Migration failed: {ex.Message}. Applying fallback SQL...");
+        var conn = db.Database.GetDbConnection();
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            CREATE EXTENSION IF NOT EXISTS vector;
+            DO $$ BEGIN
+                ALTER TABLE products ADD COLUMN image_embedding vector(512);
+            EXCEPTION WHEN duplicate_column THEN NULL;
+            END $$;
+            DO $$ BEGIN
+                CREATE INDEX IF NOT EXISTS idx_products_image_embedding ON products USING hnsw (image_embedding vector_cosine_ops);
+            EXCEPTION WHEN undefined_table THEN NULL;
+            END $$;";
+        await cmd.ExecuteNonQueryAsync();
+        await conn.CloseAsync();
+    }
 }
 
 await app.Services.SeedIdentityAsync();

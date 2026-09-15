@@ -38,6 +38,15 @@ namespace OneFit.Api.Endpoints.AuthEndPoints
                         message = "An account with this email already exists."
                     });
                 }
+                catch (Exception ex) when (
+                    ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.Conflict(new
+                    {
+                        message = "An account with this email already exists."
+                    });
+                }
                 catch (Exception)
                 {
                     return Results.Json(

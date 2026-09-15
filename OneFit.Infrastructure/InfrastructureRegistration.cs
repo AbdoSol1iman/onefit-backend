@@ -108,6 +108,7 @@ public static class InfrastructureRegistration
         services.AddScoped<IStripePaymentService, StripePaymentService>();
         services.AddScoped<IStripeWebhookService, StripeWebhookService>();
         services.AddScoped<IVisualSearchService, VisualSearchService>();
+        services.AddHostedService<EmbeddingBackfillService>();
 
         services.Configure<EmbeddingServiceOptions>(
             configuration.GetSection(EmbeddingServiceOptions.SectionName));

@@ -76,11 +76,10 @@ public sealed class EmbeddingBackfillService : BackgroundService
     private async Task<int> ProcessBatchAsync(int alreadyProcessed, CancellationToken ct)
     {
         using var scope = _services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<OneFitDbContext>();
         var embeddingClient = scope.ServiceProvider.GetRequiredService<IEmbeddingClient>();
+        var dataSource = scope.ServiceProvider.GetRequiredService<NpgsqlDataSource>();
 
-        await using var conn = db.Database.GetDbConnection();
-        await conn.OpenAsync(ct);
+        await using var conn = dataSource.OpenConnection();
 
         int remaining = 400 - alreadyProcessed;
         if (remaining <= 0) return 0;
@@ -89,7 +88,7 @@ public sealed class EmbeddingBackfillService : BackgroundService
 
         await using var selectCmd = new NpgsqlCommand(
             $"SELECT product_id, image_url FROM products WHERE image_embedding IS NULL AND image_url IS NOT NULL ORDER BY product_id LIMIT {toTake}",
-            (NpgsqlConnection)conn);
+            conn);
 
         var products = new List<(string ProductId, string ImageUrl)>();
         await using (var reader = await selectCmd.ExecuteReaderAsync(ct))
@@ -125,7 +124,7 @@ public sealed class EmbeddingBackfillService : BackgroundService
                 {
                     await using var cmd = new NpgsqlCommand(
                         "UPDATE products SET image_embedding = @embedding::vector WHERE product_id = @productId",
-                        (NpgsqlConnection)conn);
+                        conn);
                     cmd.Parameters.AddWithValue("productId", product.ProductId);
                     cmd.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Array | NpgsqlDbType.Real) { Value = embedding });
                     await cmd.ExecuteNonQueryAsync(ct);

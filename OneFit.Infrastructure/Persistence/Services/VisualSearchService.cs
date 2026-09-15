@@ -12,11 +12,13 @@ public sealed class VisualSearchService : IVisualSearchService
 {
     private readonly OneFitDbContext _db;
     private readonly IEmbeddingClient _embeddingClient;
+    private readonly NpgsqlDataSource _dataSource;
 
-    public VisualSearchService(OneFitDbContext db, IEmbeddingClient embeddingClient)
+    public VisualSearchService(OneFitDbContext db, IEmbeddingClient embeddingClient, NpgsqlDataSource dataSource)
     {
         _db = db;
         _embeddingClient = embeddingClient;
+        _dataSource = dataSource;
     }
 
     public async Task<VisualSearchResponse> SearchAsync(
@@ -64,10 +66,9 @@ public sealed class VisualSearchService : IVisualSearchService
 
         var results = new List<VisualSearchResult>();
 
-        await using var conn = _db.Database.GetDbConnection();
-        await conn.OpenAsync(ct);
+        await using var conn = _dataSource.OpenConnection();
 
-        await using var cmd = new NpgsqlCommand(sql.ToString(), (NpgsqlConnection)conn);
+        await using var cmd = new NpgsqlCommand(sql.ToString(), conn);
         cmd.Parameters.AddRange(parameters.ToArray());
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -99,17 +100,16 @@ public sealed class VisualSearchService : IVisualSearchService
         Func<int, int, Task>? onProgress = null,
         CancellationToken ct = default)
     {
-        await using var conn = _db.Database.GetDbConnection();
-        await conn.OpenAsync(ct);
+        await using var conn = _dataSource.OpenConnection();
 
         await using var countCmd = new NpgsqlCommand(
             "SELECT COUNT(*) FROM products WHERE image_embedding IS NULL AND image_url IS NOT NULL",
-            (NpgsqlConnection)conn);
+            conn);
         var total = Convert.ToInt32(await countCmd.ExecuteScalarAsync(ct));
 
         await using var selectCmd = new NpgsqlCommand(
             "SELECT product_id, image_url FROM products WHERE image_embedding IS NULL AND image_url IS NOT NULL",
-            (NpgsqlConnection)conn);
+            conn);
 
         var products = new List<(string ProductId, string ImageUrl)>();
         await using (var reader = await selectCmd.ExecuteReaderAsync(ct))
@@ -158,10 +158,9 @@ public sealed class VisualSearchService : IVisualSearchService
     {
         var sql = "UPDATE products SET image_embedding = @embedding::vector WHERE product_id = @productId";
 
-        await using var conn = _db.Database.GetDbConnection();
-        await conn.OpenAsync(ct);
+        await using var conn = _dataSource.OpenConnection();
 
-        await using var cmd = new NpgsqlCommand(sql, (NpgsqlConnection)conn);
+        await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("productId", productId);
         cmd.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Array | NpgsqlDbType.Real) { Value = embedding });
 

@@ -7,12 +7,11 @@ using OneFit.Infrastructure.Persistence.Data;
 
 namespace OneFit.Infrastructure.Persistence.Services;
 
-public sealed class ProductQueryService(OneFitDbContext db) : IProductQueryService
+public sealed class ProductQueryService(OneFitDbContext db, NpgsqlDataSource dataSource) : IProductQueryService
 {
     public async Task<PagedResult<ProductSummaryDto>> ListAsync(ProductListQuery query, CancellationToken ct = default)
     {
-        var conn = (NpgsqlConnection)db.Database.GetDbConnection();
-        await conn.OpenAsync(ct);
+        await using var conn = dataSource.OpenConnection();
 
         var where = new StringBuilder("WHERE p.image_embedding IS NOT NULL");
         var parameters = new List<NpgsqlParameter>();

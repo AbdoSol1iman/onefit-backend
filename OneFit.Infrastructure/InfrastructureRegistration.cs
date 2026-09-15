@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Npgsql;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using OneFit.Application.Common.Behaviors;
@@ -38,9 +39,11 @@ public static class InfrastructureRegistration
         IConfiguration configuration)
     {
         // Database & DbContext
+        var connStr = configuration.GetConnectionString("DefaultConnection")!;
         services.AddDbContext<OneFitDbContext>(options =>
-            options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(connStr));
+
+        services.AddSingleton(new NpgsqlDataSourceBuilder(connStr).Build());
 
         services.AddDataProtection();
 
